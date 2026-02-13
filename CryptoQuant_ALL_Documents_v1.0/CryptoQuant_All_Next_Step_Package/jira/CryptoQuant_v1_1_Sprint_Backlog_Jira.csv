@@ -1,0 +1,37 @@
+Issue Type,Summary,Description,Priority,Labels,Epic,Acceptance Criteria,Sprint,Phase
+Task,listenKey supervisor: renew + rebuild + WS reconnect,"Auto-renew listenKey; if keepalive fails or key invalid, create new listenKey and reconnect user WS with minimal downtime.",High,"ws,listenkey,reliability",CryptoQuant v1.1,"- Unit/Integration tests pass
+- Runbook/Checklist updated
+- Alert verified
+- Restart does not duplicate orders",Sprint 1,v1.1
+Task,User Stream gap reconciliation,"On user WS reconnect, reconcile openOrders/positions via REST and rehydrate OMS + portfolio.",High,"ws,reconcile,oms",CryptoQuant v1.1,"- Unit/Integration tests pass
+- Runbook/Checklist updated
+- Alert verified
+- Restart does not duplicate orders",Sprint 1,v1.1
+Task,Market WS gap fill,Detect missing 1m klines; backfill via REST and feed BarAggregator to avoid skipped 15m/1h bars.,High,"marketdata,gapfill",CryptoQuant v1.1,"- Unit/Integration tests pass
+- Runbook/Checklist updated
+- Alert verified
+- Restart does not duplicate orders",Sprint 1,v1.1
+Task,Limit/PostOnly order support (executor + OMS),"Add limit order placement, postOnly flag, and OMS handling for NEW/PARTIALLY_FILLED/CANCELED.",High,"execution,oms,limit",CryptoQuant v1.1,"- Unit/Integration tests pass
+- Runbook/Checklist updated
+- Alert verified
+- Restart does not duplicate orders",Sprint 2,v1.1
+Task,Slippage guardrails,Add max slippage check before market orders; if exceeded -> block trade + alert + optional safe mode.,Medium,"risk,slippage",CryptoQuant v1.1,"- Unit/Integration tests pass
+- Runbook/Checklist updated
+- Alert verified
+- Restart does not duplicate orders",Sprint 2,v1.1
+Task,Flip confirmation by fills,Confirm flatten completion using ORDER_TRADE_UPDATE fills and OMS terminal states; enforce open-after-flat.,Medium,"flip,oms",CryptoQuant v1.1,"- Unit/Integration tests pass
+- Runbook/Checklist updated
+- Alert verified
+- Restart does not duplicate orders",Sprint 2,v1.1
+Task,Hot reload apply-on-bar-boundary,Wire HotReloadManager to apply new config starting next 15m bar; add audit logs and alert on change.,Medium,"hotreload,audit",CryptoQuant v1.1,"- Unit/Integration tests pass
+- Runbook/Checklist updated
+- Alert verified
+- Restart does not duplicate orders",Sprint 3,v1.1
+Task,Ops dashboard (minimal API) secured,"Expose /health,/status,/orders with token/allowlist; include safeMode/kill indicators.",Low,"dashboard,ops,security",CryptoQuant v1.1,"- Unit/Integration tests pass
+- Runbook/Checklist updated
+- Alert verified
+- Restart does not duplicate orders",Sprint 3,v1.1
+Task,Release automation: v1.1 RC checklist,Create RC workflow: build artifacts + changelog + go/no-go run + rollback pack.,Medium,"release,ops",CryptoQuant v1.1,"- Unit/Integration tests pass
+- Runbook/Checklist updated
+- Alert verified
+- Restart does not duplicate orders",Sprint 3,v1.1
