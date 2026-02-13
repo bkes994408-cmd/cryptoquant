@@ -1,0 +1,14 @@
+# Production configuration (example)
+# Override values from base.yaml
+
+app:
+  mode: live
+
+logging:
+  level: WARN
+
+exchange:
+  testnet: false
+
+risk:
+  max_notional_usd: 1000

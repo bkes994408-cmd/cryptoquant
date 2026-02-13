@@ -1,0 +1,14 @@
+# Staging configuration (example)
+# Override values from base.yaml
+
+app:
+  mode: paper
+
+logging:
+  level: INFO
+
+exchange:
+  testnet: true
+
+risk:
+  max_notional_usd: 500

@@ -1,0 +1,22 @@
+# Base (shared) configuration for CryptoQuant
+#
+# This repo is currently documentation-first (MVP-0). The config templates are here
+# to standardize environment layering early, even before code is introduced.
+
+app:
+  name: cryptoquant
+  mode: paper  # paper | backtest | live
+
+logging:
+  level: INFO
+
+exchange:
+  name: binance
+  # NOTE: Do not commit real keys. Use your secret manager / CI secrets.
+  api_key_env: BINANCE_API_KEY
+  api_secret_env: BINANCE_API_SECRET
+
+risk:
+  max_notional_usd: 1000
+  max_leverage: 2
+  daily_loss_limit_usd: 50

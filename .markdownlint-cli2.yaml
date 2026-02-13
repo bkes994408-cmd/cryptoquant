@@ -1,0 +1,10 @@
+# markdownlint-cli2 configuration
+# https://github.com/DavidAnson/markdownlint-cli2
+
+config:
+  # Allow longer lines in docs (tables/links often exceed 80)
+  MD013: false
+
+# Ignore legacy/binary docs folder
+ignores:
+  - "docs/legacy/**"
