@@ -1,0 +1,10 @@
+README.md
+pyproject.toml
+src/cryptoquant/__init__.py
+src/cryptoquant/core.py
+src/cryptoquant.egg-info/PKG-INFO
+src/cryptoquant.egg-info/SOURCES.txt
+src/cryptoquant.egg-info/dependency_links.txt
+src/cryptoquant.egg-info/requires.txt
+src/cryptoquant.egg-info/top_level.txt
+tests/test_core.py
