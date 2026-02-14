@@ -36,7 +36,8 @@ jobs:
           set -euo pipefail
           echo "Checking for obvious secrets patterns..."
           # NOTE: exclude this workflow file to avoid self-matching on the regex literals.
-          ! grep -R --binary-files=without-match --exclude-dir=docs/legacy --line-number \
+          # We keep the scan comprehensive (including docs/legacy). Binary files are treated as "no match".
+          ! grep -R --binary-files=without-match --line-number \
             --exclude-dir=.git \
             --exclude=ci.yml \
             -E "(API_KEY=|SECRET=|gho_|BEGIN PRIVATE KEY)" \
