@@ -3,7 +3,7 @@
 > 原則：先 Paper/Backtest，完整測試與風控到位後再談 Live。
 
 ## MVP-0：工程化（門檻）
-- [ ] Repo 結構：src/ tests/ docs/
+- [x] Repo 結構：src/ tests/ docs/
 - [ ] CI：lint + unit tests + basic security scan
 - [ ] 組態：dev/stg/prd 設定分層
 
