@@ -8,7 +8,7 @@
 - [ ] 組態：dev/stg/prd 設定分層
 
 ## MVP-1：Paper 模式可跑通（端到端）
-- [ ] Market WS（1m kline close）+ 自動重連
+- [x] Market WS（1m kline close）+ 自動重連
 - [ ] BarAggregator（15m/1h）+ gap fill
 - [ ] Strategy Engine：輸出 targetQty（多空/0）
 - [ ] Risk Manager：notional cap / leverage cap / daily stop
