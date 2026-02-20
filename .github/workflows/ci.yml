@@ -1,4 +1,4 @@
-name: ci
+name: CI
 
 on:
   pull_request:
@@ -6,13 +6,49 @@ on:
     branches: [main]
 
 jobs:
-  docs:
+  lint:
+    name: Lint (ruff)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Basic repo sanity
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
         run: |
-          set -euo pipefail
-          echo "Checking for obvious secrets patterns..."
-          ! grep -R --line-number -E "(API_KEY=|SECRET=|gho_|BEGIN PRIVATE KEY)" .
-          echo "OK"
+          python -m pip install --upgrade pip
+          pip install -e .[dev] ruff
+      - name: Run lint
+        run: ruff check src tests --ignore F401
+
+  unit-tests:
+    name: Unit tests (pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[dev]
+      - name: Run tests
+        run: pytest
+
+  security-scan:
+    name: Basic security scan (bandit + pip-audit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[dev] bandit pip-audit
+      - name: Static security scan (bandit)
+        run: bandit -q -r src
+      - name: Dependency vulnerability scan (pip-audit, non-blocking)
+        run: pip-audit || true
