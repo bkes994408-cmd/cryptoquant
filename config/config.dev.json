@@ -1,0 +1,4 @@
+{
+  "log_level": "DEBUG",
+  "market_ws_url": "wss://testnet.binance.vision/ws"
+}

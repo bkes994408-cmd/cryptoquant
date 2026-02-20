@@ -1,0 +1,4 @@
+{
+  "log_level": "INFO",
+  "market_ws_url": "wss://stream.binance.com:9443/ws"
+}
