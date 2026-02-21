@@ -6,13 +6,53 @@ on:
     branches: [main]
 
 jobs:
-  docs:
+  lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Basic repo sanity
+
+      - name: Markdown lint
+        uses: DavidAnson/markdownlint-cli2-action@v16
+        with:
+          globs: |
+            docs/**/*.md
+            CryptoQuant_ALL_Documents_v1.0/**/README.md
+
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest
+
+      - name: Run unit tests
+        run: pytest -q
+
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Basic secrets pattern check
         run: |
           set -euo pipefail
-          echo "Checking for obvious secrets patterns..."
-          ! grep -R --line-number -E "(API_KEY=|SECRET=|gho_|BEGIN PRIVATE KEY)" .
-          echo "OK"
+          ! grep -R --binary-files=without-match --line-number \
+            --exclude-dir=.git \
+            --exclude-dir=.github \
+            -E "(API_KEY=|SECRET=|gho_|BEGIN PRIVATE KEY)" \
+            .
+
+      - name: Gitleaks scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
