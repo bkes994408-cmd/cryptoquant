@@ -5,8 +5,8 @@
 ## MVP-0：工程化（門檻）
 
 - [x] Repo 結構：src/ tests/ docs/
-- [ ] CI：lint + unit tests + basic security scan
-- [ ] 組態：dev/stg/prd 設定分層
+- [x] CI：lint + unit tests + basic security scan
+- [x] 組態：dev/stg/prd 設定分層
 
 ## MVP-1：Paper 模式可跑通（端到端）
 
