@@ -10,8 +10,8 @@
 
 ## MVP-1：Paper 模式可跑通（端到端）
 
-- [ ] Market WS（1m kline close）+ 自動重連
-- [ ] BarAggregator（15m/1h）+ gap fill
+- [x] Market WS（1m kline close）+ 自動重連
+- [x] BarAggregator（15m/1h）+ gap fill
 - [ ] Strategy Engine：輸出 targetQty（多空/0）
 - [ ] Risk Manager：notional cap / leverage cap / daily stop
 - [ ] OMS：clientOrderId 冪等 + 狀態機
