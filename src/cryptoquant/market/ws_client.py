@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import json
 import time
 from datetime import datetime, timezone
@@ -76,10 +77,8 @@ class BinanceKlineWSClient:
                 backoff = min(backoff * 2, self._reconnect_max_sec)
             finally:
                 if ws is not None:
-                    try:
+                    with contextlib.suppress(Exception):
                         ws.close()
-                    except Exception:
-                        pass
 
     @staticmethod
     def _parse_market_event(raw: str) -> MarketEvent | None:
