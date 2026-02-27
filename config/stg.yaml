@@ -1,0 +1,13 @@
+app:
+  env: stg
+
+risk:
+  max_notional_usd: 5000
+  max_leverage: 2
+  daily_loss_limit_usd: 100
+
+strategy:
+  dry_run: true
+
+logging:
+  level: "INFO"

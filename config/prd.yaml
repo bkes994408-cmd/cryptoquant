@@ -1,0 +1,13 @@
+app:
+  env: prd
+
+risk:
+  max_notional_usd: 20000
+  max_leverage: 3
+  daily_loss_limit_usd: 500
+
+strategy:
+  dry_run: false
+
+logging:
+  level: "WARNING"

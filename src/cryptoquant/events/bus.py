@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass
 from threading import RLock
-from typing import Any, Callable, DefaultDict, Generic, Iterable, TypeVar
+from typing import Any, Callable, DefaultDict, Iterable, TypeVar
 
 
 TEvent = TypeVar("TEvent")

@@ -80,7 +80,7 @@ class BarAggregator:
 
         current_start: datetime | None = None
         current_symbol: str | None = None
-        o = h = l = c = v = 0.0
+        o = h = low = c = v = 0.0
 
         for bar in stream:
             bucket_start = self._floor_to_bucket(bar.ts, bucket_minutes)
@@ -88,9 +88,9 @@ class BarAggregator:
             if current_start is None:
                 current_start = bucket_start
                 current_symbol = bar.symbol
-                o = h = l = c = bar.open
+                o = h = low = c = bar.open
                 h = max(h, bar.high)
-                l = min(l, bar.low)
+                low = min(low, bar.low)
                 c = bar.close
                 v = bar.volume
                 continue
@@ -103,21 +103,21 @@ class BarAggregator:
                         ts=current_start,
                         open=o,
                         high=h,
-                        low=l,
+                        low=low,
                         close=c,
                         volume=v,
                     )
                 )
                 current_start = bucket_start
                 current_symbol = bar.symbol
-                o = h = l = c = bar.open
+                o = h = low = c = bar.open
                 h = max(h, bar.high)
-                l = min(l, bar.low)
+                low = min(low, bar.low)
                 c = bar.close
                 v = bar.volume
             else:
                 h = max(h, bar.high)
-                l = min(l, bar.low)
+                low = min(low, bar.low)
                 c = bar.close
                 v += bar.volume
 
@@ -129,7 +129,7 @@ class BarAggregator:
                     ts=current_start,
                     open=o,
                     high=h,
-                    low=l,
+                    low=low,
                     close=c,
                     volume=v,
                 )
