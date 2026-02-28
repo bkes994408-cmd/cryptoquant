@@ -14,10 +14,10 @@
 - [x] BarAggregator（15m/1h）+ gap fill
 - [x] Strategy Engine：輸出 targetQty（多空/0）
 - [x] Risk Manager：notional cap / leverage cap
-- [ ] Risk Manager：daily stop
+- [x] Risk Manager：daily stop
 - [x] OMS：clientOrderId 冪等 + 狀態機
-- [ ] Executor（Paper）：撮合（市價為主）+ 手續費/滑價模型
-- [ ] 事件回放（Backtest）最小版本
+- [x] Executor（Paper）：撮合（市價為主）+ 手續費/滑價模型
+- [x] 事件回放（Backtest）最小版本
 
 ## MVP-2：完整功能測試（必備）
 

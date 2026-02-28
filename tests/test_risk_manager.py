@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 from cryptoquant.risk import RiskInput, RiskLimits, RiskManager
 
 
@@ -30,3 +32,69 @@ def test_risk_manager_clamps_by_leverage_cap() -> None:
     assert result.estimated_notional == 1500
     assert result.estimated_leverage == 1.5
     assert result.reason == "clamped: leverage cap"
+
+
+def test_daily_stop_blocks_opening_new_position_after_drawdown_limit() -> None:
+    mgr = RiskManager(RiskLimits(notional_cap=99999, leverage_cap=10, daily_stop_drawdown_pct=0.05))
+
+    # start-of-day anchor
+    mgr.apply(
+        RiskInput(
+            price=100,
+            equity=1000,
+            current_qty=0,
+            target_qty=0,
+            as_of=datetime(2026, 2, 28, 0, 0, tzinfo=timezone.utc),
+        )
+    )
+
+    # 6% drawdown => trigger daily stop
+    result = mgr.apply(
+        RiskInput(
+            price=100,
+            equity=940,
+            current_qty=0,
+            target_qty=1,
+            as_of=datetime(2026, 2, 28, 1, 0, tzinfo=timezone.utc),
+        )
+    )
+
+    assert result.approved_qty == 0.0
+    assert result.reason == "rejected: daily stop"
+
+
+def test_daily_stop_still_allows_reducing_position() -> None:
+    mgr = RiskManager(RiskLimits(notional_cap=99999, leverage_cap=10, daily_stop_drawdown_pct=0.05))
+    mgr.apply(
+        RiskInput(
+            price=100,
+            equity=1000,
+            current_qty=0,
+            target_qty=0,
+            as_of=datetime(2026, 2, 28, 0, 0, tzinfo=timezone.utc),
+        )
+    )
+
+    # Trigger daily stop first (same day)
+    mgr.apply(
+        RiskInput(
+            price=100,
+            equity=940,
+            current_qty=2,
+            target_qty=2,
+            as_of=datetime(2026, 2, 28, 1, 0, tzinfo=timezone.utc),
+        )
+    )
+
+    # reducing exposure is still allowed
+    reduce_result = mgr.apply(
+        RiskInput(
+            price=100,
+            equity=930,
+            current_qty=2,
+            target_qty=1,
+            as_of=datetime(2026, 2, 28, 1, 5, tzinfo=timezone.utc),
+        )
+    )
+    assert reduce_result.approved_qty == 1
+    assert reduce_result.reason == "approved"

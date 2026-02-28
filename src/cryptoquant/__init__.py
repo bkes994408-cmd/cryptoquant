@@ -10,6 +10,8 @@ from .market import BinanceKlineWSClient
 from .strategy import StrategyDecision, StrategyEngine, MovingAverageCrossoverStrategy
 from .risk import RiskInput, RiskLimits, RiskManager, RiskResult
 from .oms import OMS, Order, OrderStatus
+from .execution import Fill, PaperExecutor
+from .backtest import BacktestResult, EventReplayer
 
 __all__ = [
     "EventBus",
@@ -27,4 +29,8 @@ __all__ = [
     "OMS",
     "Order",
     "OrderStatus",
+    "Fill",
+    "PaperExecutor",
+    "BacktestResult",
+    "EventReplayer",
 ]
