@@ -21,11 +21,11 @@
 
 ## MVP-2：完整功能測試（必備）
 
-- [ ] OMS 狀態機 unit tests（new→filled/canceled/rejected）
-- [ ] 冪等測試：重送不重複下單
-- [ ] 翻轉拆單（reduceOnly close→open）流程測試
+- [x] OMS 狀態機 unit tests（new→filled/canceled/rejected）
+- [x] 冪等測試：重送不重複下單
+- [ ] 翻轉拆單（reduceOnly close→open）流程測試（已補 xfail 測試框架與 TODO）
 - [ ] 重啟恢復（REST snapshot + User Stream 覆蓋）測試
-- [ ] 風控測試：觸發 daily stop → 禁止新倉
+- [x] 風控測試：觸發 daily stop → 禁止新倉（保留減倉/平倉）
 
 ## MVP-3：Live 前置（之後）
 
