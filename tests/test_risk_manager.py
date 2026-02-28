@@ -63,7 +63,7 @@ def test_daily_stop_blocks_opening_new_position_after_drawdown_limit() -> None:
     assert result.reason == "rejected: daily stop"
 
 
-def test_daily_stop_still_allows_reducing_position() -> None:
+def test_daily_stop_still_allows_reducing_position_and_flatten_only() -> None:
     mgr = RiskManager(RiskLimits(notional_cap=99999, leverage_cap=10, daily_stop_drawdown_pct=0.05))
     mgr.apply(
         RiskInput(
@@ -98,3 +98,29 @@ def test_daily_stop_still_allows_reducing_position() -> None:
     )
     assert reduce_result.approved_qty == 1
     assert reduce_result.reason == "approved"
+
+    # flatten is also allowed
+    flatten_result = mgr.apply(
+        RiskInput(
+            price=100,
+            equity=925,
+            current_qty=1,
+            target_qty=0,
+            as_of=datetime(2026, 2, 28, 1, 10, tzinfo=timezone.utc),
+        )
+    )
+    assert flatten_result.approved_qty == 0
+    assert flatten_result.reason == "approved"
+
+    # after flatten, opening a new position is still blocked on same day
+    reopen_blocked = mgr.apply(
+        RiskInput(
+            price=100,
+            equity=920,
+            current_qty=0,
+            target_qty=-1,
+            as_of=datetime(2026, 2, 28, 1, 15, tzinfo=timezone.utc),
+        )
+    )
+    assert reopen_blocked.approved_qty == 0.0
+    assert reopen_blocked.reason == "rejected: daily stop"

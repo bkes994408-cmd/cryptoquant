@@ -96,3 +96,29 @@
      - 事件回放（Backtest）最小版本
 
 驗證結果：`./venv_ci_cryptoquant/bin/pytest -q`（請見本輪最新結果）
+
+---
+
+## MVP-2 測試推進（2026-02-28）
+
+1. OMS 狀態機與冪等測試補齊
+   - 新增 `tests/test_oms.py`
+     - `NEW -> FILLED`
+     - `NEW -> CANCELED`
+     - `NEW -> REJECTED`
+     - `clientOrderId` 冪等（重送同 id 不覆蓋原單）
+     - terminal state 非法轉移保護
+
+2. Daily stop 高價值行為測試補強
+   - 更新 `tests/test_risk_manager.py`
+     - 明確驗證觸發 daily stop 後：
+       - 可減倉
+       - 可平倉（target=0）
+       - 同日平倉後仍不可再開新倉
+
+3. 翻轉拆單（reduceOnly close→open）流程：先補測試框架 + TODO
+   - 更新 `tests/test_backtest_replay.py`
+   - 新增 `xfail` 測試 `test_event_replayer_flip_should_split_reduce_only_close_then_open`
+   - 現況：`EventReplayer` 仍以單筆 delta 下單，尚未實作拆單；測試已鎖定預期行為供後續實作
+
+驗證結果：`pytest -q`（本輪）應為全綠 + 1 xfailed（翻轉拆單待實作）
