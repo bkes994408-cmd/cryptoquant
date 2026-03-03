@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-import pytest
-
 from cryptoquant.backtest import EventReplayer
 from cryptoquant.events.market import MarketEvent
 from cryptoquant.execution import PaperExecutor
@@ -34,7 +32,6 @@ def test_event_replayer_reaches_target_position_and_generates_fills() -> None:
     assert executor.position_qty("BTCUSDT") == 2.0
 
 
-@pytest.mark.xfail(reason="TODO(MVP-2): flip order should be split into reduceOnly close then open")
 def test_event_replayer_flip_should_split_reduce_only_close_then_open() -> None:
     oms = OMS()
     executor = PaperExecutor(oms, fee_bps=0.0, slippage_bps=0.0)
