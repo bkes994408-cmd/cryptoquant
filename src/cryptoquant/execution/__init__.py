@@ -4,6 +4,7 @@ from .live import LiveExecutor, LiveOrderAck, LiveOrderRequest, OrderGateway
 from .paper import Fill, PaperExecutor
 from .recovery import RecoveredState, RecoverySnapshot, UserStreamEvent, recover_state
 from .user_stream import ExecutionReport, UserStreamProcessor
+from .user_stream_binance import BinanceUserStreamClient, parse_binance_execution_report
 
 __all__ = [
     "BinanceGatewayConfig",
@@ -23,4 +24,6 @@ __all__ = [
     "recover_state",
     "ExecutionReport",
     "UserStreamProcessor",
+    "BinanceUserStreamClient",
+    "parse_binance_execution_report",
 ]
