@@ -1,0 +1,19 @@
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Local environments
+.venv/
+venv/
+venv_*/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# OS junk
+.DS_Store

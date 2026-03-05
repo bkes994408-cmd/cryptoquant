@@ -21,14 +21,21 @@
 
 ## MVP-2：完整功能測試（必備）
 
-- [ ] OMS 狀態機 unit tests（new→filled/canceled/rejected）
-- [ ] 冪等測試：重送不重複下單
-- [ ] 翻轉拆單（reduceOnly close→open）流程測試
-- [ ] 重啟恢復（REST snapshot + User Stream 覆蓋）測試
-- [ ] 風控測試：觸發 daily stop → 禁止新倉
+- [x] OMS 狀態機 unit tests（new→filled/canceled/rejected）
+- [x] 冪等測試：重送不重複下單
+- [x] 翻轉拆單（reduceOnly close→open）流程測試
+- [x] 重啟恢復（REST snapshot + User Stream 覆蓋）測試
+- [x] 風控測試：觸發 daily stop → 禁止新倉
 
 ## MVP-3：Live 前置（之後）
 
-- [ ] Secrets 管理（不得寫入 log）
-- [ ] Kill switch
-- [ ] 監控告警（orders/rejects/safe mode）
+- [x] Secrets 管理（不得寫入 log）
+- [x] Kill switch
+- [x] 監控告警（orders/rejects/safe mode）
+
+## MVP-4：Live Adapter（進行中）
+
+- [x] Live executor skeleton（gateway interface + idempotency + kill switch guard）
+- [x] Binance REST gateway（實際下單）
+- [x] User Stream 事件接線（ACK/FILL/REJECT 回寫 OMS）
+- [x] 端到端 dry-run（testnet）
