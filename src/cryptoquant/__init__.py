@@ -28,6 +28,8 @@ from .execution import (
     ExecutionReport,
     UserStreamProcessor,
     run_testnet_dry_run,
+    BinanceUserStreamClient,
+    parse_binance_execution_report,
 )
 from .backtest import BacktestResult, EventReplayer
 from .security import DEFAULT_SECRET_KEYS, redact_secrets
@@ -67,6 +69,8 @@ __all__ = [
     "recover_state",
     "ExecutionReport",
     "UserStreamProcessor",
+    "BinanceUserStreamClient",
+    "parse_binance_execution_report",
     "BacktestResult",
     "EventReplayer",
     "DEFAULT_SECRET_KEYS",
