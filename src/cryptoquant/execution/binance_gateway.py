@@ -25,10 +25,17 @@ class BinanceGatewayConfig:
     recv_window_ms: int = 5000
 
 
+def _validate_https_url(url: str) -> None:
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme != "https" or not parsed.netloc:
+        raise ValueError("url must be absolute https URL")
+
+
 class UrlLibHttpTransport:
     def post(self, *, url: str, headers: dict[str, str], body: bytes) -> dict:
+        _validate_https_url(url)
         req = urllib.request.Request(url=url, data=body, headers=headers, method="POST")
-        with urllib.request.urlopen(req, timeout=10) as resp:
+        with urllib.request.urlopen(req, timeout=10) as resp:  # nosec B310
             return json.loads(resp.read().decode("utf-8"))
 
 
@@ -42,6 +49,7 @@ class BinanceFuturesOrderGateway:
         transport: HttpTransport | None = None,
         timestamp_ms_fn: Callable[[], int] | None = None,
     ) -> None:
+        _validate_https_url(config.base_url)
         self._config = config
         self._transport = transport or UrlLibHttpTransport()
         self._timestamp_ms_fn = timestamp_ms_fn or (lambda: int(time.time() * 1000))

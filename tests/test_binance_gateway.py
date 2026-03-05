@@ -70,3 +70,8 @@ def test_binance_gateway_rejects_missing_order_id() -> None:
 
     with pytest.raises(ValueError, match="missing orderId"):
         gateway.place_market_order(symbol="BTCUSDT", qty=1.0, client_order_id="cid-3")
+
+
+def test_binance_gateway_requires_https_base_url() -> None:
+    with pytest.raises(ValueError, match="https URL"):
+        BinanceFuturesOrderGateway(BinanceGatewayConfig(api_key="k", api_secret="s", base_url="http://x"))
