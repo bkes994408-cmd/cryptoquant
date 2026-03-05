@@ -1,5 +1,6 @@
 from .binance_gateway import BinanceFuturesOrderGateway, BinanceGatewayConfig, HttpTransport
 from .dry_run import DryRunResult, run_testnet_dry_run
+from .listen_key import BinanceAuthConfig, BinanceFuturesListenKeyProvider
 from .live import LiveExecutor, LiveOrderAck, LiveOrderRequest, OrderGateway
 from .paper import Fill, PaperExecutor
 from .recovery import RecoveredState, RecoverySnapshot, UserStreamEvent, recover_state
@@ -26,4 +27,6 @@ __all__ = [
     "UserStreamProcessor",
     "BinanceUserStreamClient",
     "parse_binance_execution_report",
+    "BinanceAuthConfig",
+    "BinanceFuturesListenKeyProvider",
 ]
