@@ -17,15 +17,25 @@ class KeepaliveProvider(Protocol):
 class KeepaliveRunner:
     provider: KeepaliveProvider
     interval_sec: float = 30 * 60
+    failure_backoff_initial_sec: float = 1.0
+    failure_backoff_max_sec: float = 30.0
     sleep_fn: Callable[[float], None] = time.sleep
 
     def run_once(self) -> str:
         return self.provider.keepalive()
 
     def run_forever(self, stop_event: threading.Event) -> None:
+        backoff = self.failure_backoff_initial_sec
         while not stop_event.is_set():
-            self.provider.keepalive()
-            self.sleep_fn(self.interval_sec)
+            try:
+                self.provider.keepalive()
+                backoff = self.failure_backoff_initial_sec
+                self.sleep_fn(self.interval_sec)
+            except Exception:
+                if stop_event.is_set():
+                    break
+                self.sleep_fn(backoff)
+                backoff = min(backoff * 2, self.failure_backoff_max_sec)
 
 
 class BinanceUserStreamService:
