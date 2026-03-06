@@ -14,6 +14,18 @@ class FakeProvider:
         return "lk"
 
 
+class FlakyProvider:
+    def __init__(self, fail_times: int) -> None:
+        self.calls = 0
+        self._fail_times = fail_times
+
+    def keepalive(self) -> str:
+        self.calls += 1
+        if self.calls <= self._fail_times:
+            raise RuntimeError("boom")
+        return "lk"
+
+
 class FakeClient:
     def __init__(self) -> None:
         self.calls = 0
@@ -50,6 +62,29 @@ def test_keepalive_runner_run_forever_can_stop_via_event() -> None:
     runner.run_forever(stop)
 
     assert p.calls == 1
+
+
+def test_keepalive_runner_retries_with_backoff_on_failure() -> None:
+    p = FlakyProvider(fail_times=2)
+    sleeps: list[float] = []
+
+    def fake_sleep(seconds: float) -> None:
+        sleeps.append(seconds)
+        if len(sleeps) >= 3:
+            stop.set()
+
+    stop = threading.Event()
+    runner = KeepaliveRunner(
+        provider=p,
+        interval_sec=10.0,
+        failure_backoff_initial_sec=0.5,
+        failure_backoff_max_sec=2.0,
+        sleep_fn=fake_sleep,
+    )
+    runner.run_forever(stop)
+
+    assert p.calls == 3
+    assert sleeps == [0.5, 1.0, 10.0]
 
 
 def test_user_stream_service_starts_keepalive_and_runs_client_once() -> None:
