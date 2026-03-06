@@ -6,6 +6,7 @@ from .paper import Fill, PaperExecutor
 from .recovery import RecoveredState, RecoverySnapshot, UserStreamEvent, recover_state
 from .user_stream import ExecutionReport, UserStreamProcessor
 from .user_stream_binance import BinanceUserStreamClient, parse_binance_execution_report
+from .user_stream_runtime import BinanceUserStreamService, KeepaliveRunner
 
 __all__ = [
     "BinanceGatewayConfig",
@@ -29,4 +30,6 @@ __all__ = [
     "parse_binance_execution_report",
     "BinanceAuthConfig",
     "BinanceFuturesListenKeyProvider",
+    "KeepaliveRunner",
+    "BinanceUserStreamService",
 ]
