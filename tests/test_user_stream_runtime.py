@@ -29,9 +29,13 @@ class FlakyProvider:
 class FakeClient:
     def __init__(self) -> None:
         self.calls = 0
+        self.stop_calls = 0
 
     def run_forever(self) -> None:
         self.calls += 1
+
+    def stop(self) -> None:
+        self.stop_calls += 1
 
 
 class FakeProcessor:
@@ -154,3 +158,19 @@ def test_user_stream_service_wire_callback_passes_through() -> None:
     callback = BinanceUserStreamService.wire_callback(processor)
     callback("evt")
     assert processor.events == ["evt"]
+
+
+def test_user_stream_service_stop_calls_client_stop() -> None:
+    p = FakeProvider()
+    keepalive = KeepaliveRunner(provider=p, interval_sec=999999)
+    client = FakeClient()
+    processor = FakeProcessor()
+
+    svc = BinanceUserStreamService(
+        client=client,
+        processor=processor,
+        keepalive_runner=keepalive,
+    )
+
+    svc.stop()
+    assert client.stop_calls == 1
