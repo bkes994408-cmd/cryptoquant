@@ -4,7 +4,9 @@ app:
 
 exchange:
   venue: "binance-futures"
-  symbol: "BTCUSDT"
+  symbol: "BTCUSDT"  # backward compatibility
+  symbols:
+    - "BTCUSDT"
 
 risk:
   max_notional_usd: 10000
