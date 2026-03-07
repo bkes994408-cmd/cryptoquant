@@ -79,19 +79,23 @@ class BinanceUserStreamService:
         self._processor = processor
         self._keepalive_runner = keepalive_runner
         self._thread_factory = thread_factory
+        self._stop_event = threading.Event()
+
+    def stop(self) -> None:
+        self._stop_event.set()
+        self._client.stop()
 
     def run_forever(self) -> None:
-        stop_event = threading.Event()
         worker = self._thread_factory(
             target=self._keepalive_runner.run_forever,
-            kwargs={"stop_event": stop_event},
+            kwargs={"stop_event": self._stop_event},
             daemon=True,
         )
         worker.start()
         try:
             self._client.run_forever()
         finally:
-            stop_event.set()
+            self._stop_event.set()
 
     @staticmethod
     def wire_callback(processor: UserStreamProcessor):
