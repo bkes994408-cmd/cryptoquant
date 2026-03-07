@@ -49,6 +49,10 @@ def test_keepalive_runner_run_once() -> None:
 
     assert key == "lk"
     assert p.calls == 1
+    stats = runner.stats()
+    assert stats.success_count == 1
+    assert stats.failure_count == 0
+    assert stats.last_error is None
 
 
 def test_keepalive_runner_run_forever_can_stop_via_event() -> None:
@@ -85,6 +89,35 @@ def test_keepalive_runner_retries_with_backoff_on_failure() -> None:
 
     assert p.calls == 3
     assert sleeps == [0.5, 1.0, 10.0]
+    stats = runner.stats()
+    assert stats.success_count == 1
+    assert stats.failure_count == 2
+    assert stats.last_error is None
+
+
+def test_keepalive_runner_records_last_error_when_only_failures() -> None:
+    p = FlakyProvider(fail_times=10)
+    sleeps: list[float] = []
+
+    def fake_sleep(seconds: float) -> None:
+        sleeps.append(seconds)
+        if len(sleeps) >= 2:
+            stop.set()
+
+    stop = threading.Event()
+    runner = KeepaliveRunner(
+        provider=p,
+        interval_sec=10.0,
+        failure_backoff_initial_sec=0.5,
+        failure_backoff_max_sec=2.0,
+        sleep_fn=fake_sleep,
+    )
+    runner.run_forever(stop)
+
+    stats = runner.stats()
+    assert stats.success_count == 0
+    assert stats.failure_count == 2
+    assert stats.last_error == "boom"
 
 
 def test_user_stream_service_starts_keepalive_and_runs_client_once() -> None:
