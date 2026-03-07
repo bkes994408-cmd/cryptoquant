@@ -124,6 +124,32 @@ def test_keepalive_runner_records_last_error_when_only_failures() -> None:
     assert stats.last_error == "boom"
 
 
+def test_keepalive_runner_invokes_failure_callback() -> None:
+    p = FlakyProvider(fail_times=1)
+    callback_stats = []
+
+    def on_failure(stats) -> None:  # noqa: ANN001
+        callback_stats.append(stats)
+
+    def fake_sleep(_: float) -> None:
+        stop.set()
+
+    stop = threading.Event()
+    runner = KeepaliveRunner(
+        provider=p,
+        interval_sec=10.0,
+        failure_backoff_initial_sec=0.5,
+        failure_backoff_max_sec=2.0,
+        sleep_fn=fake_sleep,
+        on_failure=on_failure,
+    )
+    runner.run_forever(stop)
+
+    assert len(callback_stats) == 1
+    assert callback_stats[0].failure_count == 1
+    assert callback_stats[0].last_error == "boom"
+
+
 def test_user_stream_service_starts_keepalive_and_runs_client_once() -> None:
     p = FakeProvider()
     keepalive = KeepaliveRunner(provider=p, interval_sec=999999)
