@@ -17,6 +17,8 @@ class WebSocketLike(Protocol):
 class ListenKeyProvider(Protocol):
     def get_listen_key(self) -> str: ...
 
+    def clear_cached_listen_key(self) -> None: ...
+
 
 class BinanceUserStreamClient:
     """Minimal Binance user-stream client with reconnect support."""
@@ -61,6 +63,7 @@ class BinanceUserStreamClient:
             except Exception:
                 if self._stopped:
                     break
+                self._listen_key_provider.clear_cached_listen_key()
                 self._sleep_fn(backoff)
                 backoff = min(backoff * 2, self._reconnect_max_sec)
             finally:

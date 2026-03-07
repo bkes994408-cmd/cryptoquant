@@ -78,6 +78,9 @@ class BinanceFuturesListenKeyProvider:
         self._listen_key = returned
         return returned
 
+    def clear_cached_listen_key(self) -> None:
+        self._listen_key = None
+
     def _headers(self) -> dict[str, str]:
         return {
             "Content-Type": "application/x-www-form-urlencoded",
