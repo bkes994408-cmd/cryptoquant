@@ -67,3 +67,15 @@ def test_listen_key_provider_raises_when_missing_key() -> None:
 
     with pytest.raises(ValueError, match="missing listenKey"):
         p.get_listen_key()
+
+
+def test_listen_key_provider_clear_cache_forces_recreate() -> None:
+    t = FakeTransport(post_payload={"listenKey": "lk-1"}, put_payload={"listenKey": "lk-1"})
+    p = BinanceFuturesListenKeyProvider(
+        BinanceAuthConfig(api_key="k", api_secret="s"), transport=t, timestamp_ms_fn=lambda: 111
+    )
+
+    assert p.get_listen_key() == "lk-1"
+    p.clear_cached_listen_key()
+    assert p.get_listen_key() == "lk-1"
+    assert t.post_calls == 2

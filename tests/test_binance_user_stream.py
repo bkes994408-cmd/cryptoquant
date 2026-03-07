@@ -57,10 +57,14 @@ def test_user_stream_client_reconnects_and_emits_report() -> None:
     class Provider:
         def __init__(self) -> None:
             self.calls = 0
+            self.clear_calls = 0
 
         def get_listen_key(self) -> str:
             self.calls += 1
             return f"lk-{self.calls}"
+
+        def clear_cached_listen_key(self) -> None:
+            self.clear_calls += 1
 
     class FailingWS:
         def recv(self) -> str:
@@ -117,6 +121,7 @@ def test_user_stream_client_reconnects_and_emits_report() -> None:
     client.run_forever()
 
     assert provider.calls == 2
+    assert provider.clear_calls == 1
     assert factory_calls["n"] == 2
     assert sleeps == [0.5]
     assert len(reports) == 1
