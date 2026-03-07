@@ -27,6 +27,7 @@ class KeepaliveRunner:
     failure_backoff_initial_sec: float = 1.0
     failure_backoff_max_sec: float = 30.0
     sleep_fn: Callable[[float], None] = time.sleep
+    on_failure: Callable[[KeepaliveStats], None] | None = None
 
     def __post_init__(self) -> None:
         self._success_count = 0
@@ -58,6 +59,8 @@ class KeepaliveRunner:
             except Exception as exc:
                 self._failure_count += 1
                 self._last_error = str(exc)
+                if self.on_failure is not None:
+                    self.on_failure(self.stats())
                 if stop_event.is_set():
                     break
                 self.sleep_fn(backoff)
