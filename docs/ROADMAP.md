@@ -39,3 +39,18 @@
 - [x] Binance REST gateway（實際下單）
 - [x] User Stream 事件接線（ACK/FILL/REJECT 回寫 OMS）
 - [x] 端到端 dry-run（testnet）
+
+## MVP-5：高階實時交易與擴展
+
+- [x] 集成多個交易對
+- [x] 實時績效監控與分析
+- [x] 自動化策略優化
+- [x] 回測平台強化（更多數據源、高級指標）
+- [x] 高頻交易基礎設施調優（低延遲、高吞吐量）
+
+## MVP-6：進階回測策略驗證框架
+
+- [x] 高頻交易基礎設施調優（低延遲、高吞吐量）
+- [x] 回測事件匯流排壓測基準（p95 latency / max throughput）
+- [x] 策略穩健性驗證（walk-forward / regime split）
+- [ ] 大樣本回放資源治理（memory / queue backpressure 可觀測）

@@ -1,5 +1,111 @@
 # Sprint Result
 
+## MVP-6：進階回測策略驗證框架 / 策略穩健性驗證（walk-forward / regime split）（2026-03-09）
+
+1. 新增策略穩健性驗證模組
+   - 新增 `src/cryptoquant/backtest/robustness.py`
+   - 提供 `run_walk_forward_validation(...)`：以 rolling train/test window 做 walk-forward 驗證
+   - 提供 `run_regime_split_validation(...)`：依報酬率閾值拆分 bull / sideways / bear regime
+   - 提供 `evaluate_strategy_metrics(...)`：輸出交易次數、turnover、PnL、報酬率、win rate
+
+2. 新增可直接執行的驗證腳本
+   - 新增 `scripts/validate_strategy_robustness.py`
+   - 讀取 `ts,close` CSV，輸出 walk-forward 與 regime split 的 JSON 摘要
+
+3. 測試補齊
+   - 新增 `tests/test_backtest_robustness.py`
+   - 覆蓋：
+     - metrics 基本欄位
+     - walk-forward 視窗切分與聚合指標
+     - regime split 三種市場狀態回報
+
+4. 文件更新
+   - 更新 `src/cryptoquant/backtest/__init__.py` 導出 robustness API
+   - 更新 `docs/ROADMAP.md`：勾選 `策略穩健性驗證（walk-forward / regime split）`
+
+驗證結果：
+- `./venv_ci_cryptoquant/bin/pytest -q` ✅
+
+---
+
+## MVP-6：進階回測策略驗證框架 / 回測事件匯流排壓測基準（p95 latency / max throughput）（2026-03-09）
+
+1. 新增事件匯流排壓測框架
+   - 新增 `src/cryptoquant/backtest/event_bus_benchmark.py`
+   - 提供 `run_event_bus_benchmark(...)`，輸出 `p50/p95/p99/max latency (us)` 與 `throughput (events/sec)`
+   - 支援 warmup、worker/batch/queue 配置，並可切換 drop-on-full 或 block-on-full
+
+2. 新增可直接執行的壓測腳本
+   - 新增 `scripts/benchmark_event_bus.py`
+   - 範例：
+     - `PYTHONPATH=src ./venv_ci_cryptoquant/bin/python scripts/benchmark_event_bus.py --events 100000 --warmup-events 10000 --workers 2 --batch-size 256`
+
+3. 測試補齊
+   - 新增 `tests/test_event_bus_benchmark.py`
+   - 覆蓋百分位計算與壓測結果關鍵欄位（p95 latency / throughput）
+
+4. 文件更新
+   - 更新 `src/cryptoquant/backtest/__init__.py` 導出 benchmark API
+   - 更新 `docs/ROADMAP.md`：勾選 `回測事件匯流排壓測基準（p95 latency / max throughput）`
+
+驗證結果：
+- `./venv_ci_cryptoquant/bin/pytest -q` ✅
+
+---
+
+## MVP-6：進階回測策略驗證框架 / 高頻交易基礎設施調優（低延遲、高吞吐量）（2026-03-09）
+
+1. 事件匯流排可靠性/吞吐優化
+   - 擴充 `LowLatencyEventBus`：新增 `flush(timeout_sec)`，可在回測階段等待 queue drained
+   - `stop()` 先 flush 再停工，降低 shutdown 遺留事件風險
+   - 批次 dispatch metrics 聚合改為「每批一次上鎖」以降低 lock contention
+   - worker 加入 handler exception 隔離，單一 handler 失敗不拖垮整條 dispatch pipeline
+
+2. 可觀測性指標擴展
+   - `DispatchStats` 新增：
+     - `batches`（批次數）
+     - `handler_errors`（handler 例外次數）
+
+3. 測試補齊
+   - 更新 `tests/test_low_latency_event_bus.py`，新增覆蓋：
+     - `flush` 能正確等待隊列清空
+     - handler 發生例外時，worker 能持續運作並累計錯誤計數
+
+4. 文件更新
+   - 更新 `docs/ROADMAP.md`：新增 `MVP-6：進階回測策略驗證框架`
+   - 勾選該階段首個完成項：`高頻交易基礎設施調優（低延遲、高吞吐量）`
+
+驗證結果：
+- `./venv_ci_cryptoquant/bin/pytest -q` ✅
+
+---
+
+## MVP-5：高頻交易基礎設施調優（低延遲、高吞吐量）（2026-03-08）
+
+1. 低延遲/高吞吐事件匯流排
+   - 擴充 `src/cryptoquant/events/bus.py`，新增 `LowLatencyEventBus`
+   - 透過 bounded queue + worker threads + micro-batch dispatch 提升 burst 吞吐
+   - 支援 `drop_on_full` 背壓策略，避免高峰時 publisher 阻塞
+   - 新增 `DispatchStats`，可觀測 published/dropped/dispatched 與平均 dispatch latency（微秒）
+
+2. API 導出
+   - 更新 `src/cryptoquant/events/__init__.py`
+   - 導出 `LowLatencyEventBus` 與 `DispatchStats`，便於執行層直接接線
+
+3. 測試補齊
+   - 新增 `tests/test_low_latency_event_bus.py`
+   - 覆蓋：
+     - batched dispatch correctness（200 events）
+     - backpressure drop 行為（queue 滿載時 dropped > 0）
+
+4. 文件更新
+   - 更新 `docs/ROADMAP.md`：勾選 `MVP-5` 子項 `高頻交易基礎設施調優（低延遲、高吞吐量）`
+
+驗證結果：
+- `./venv_ci_cryptoquant/bin/pytest -q` ✅
+
+---
+
 ## MVP-1 第一階段：Market Data Flow（2026-02-27）
 
 1. Market WS（1m kline close）+ 自動重連（最小可用）
