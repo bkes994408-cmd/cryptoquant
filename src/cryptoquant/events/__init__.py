@@ -1,4 +1,4 @@
-from .bus import EventBus
+from .bus import DispatchStats, EventBus, LowLatencyEventBus
 from .market import MarketEvent
 
-__all__ = ["EventBus", "MarketEvent"]
+__all__ = ["DispatchStats", "EventBus", "LowLatencyEventBus", "MarketEvent"]

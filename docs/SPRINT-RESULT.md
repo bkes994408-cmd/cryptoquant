@@ -228,3 +228,32 @@
    - 現況：`EventReplayer` 仍以單筆 delta 下單，尚未實作拆單；測試已鎖定預期行為供後續實作
 
 驗證結果：`pytest -q`（本輪）應為全綠 + 1 xfailed（翻轉拆單待實作）
+
+---
+
+## MVP-6：進階回測策略驗證框架 / 大樣本回放資源治理（memory / queue backpressure 可觀測）（2026-03-09）
+
+1. 新增大樣本回放資源治理模組
+   - 新增 `src/cryptoquant/backtest/replay_resource_governance.py`
+   - 提供 `run_large_sample_replay_governance(...)`，回傳記憶體追蹤與 queue 壓力觀測報告
+   - 報告欄位包含 `peak_memory_kb`、`queue_high_watermark`、`max_queue_utilization`、`backpressure_count`
+
+2. 擴充事件匯流排可觀測性
+   - 擴充 `src/cryptoquant/events/bus.py`：`LowLatencyEventBus` 新增 queue 水位與 backpressure 計數
+   - `DispatchStats` 新增 `queue_capacity`、`queue_high_watermark`、`backpressure_count`
+
+3. 壓測輸出補齊資源治理指標
+   - 新增/更新 `src/cryptoquant/backtest/event_bus_benchmark.py`
+   - benchmark 結果新增 `backpressure_count`、`queue_high_watermark`
+
+4. 測試補齊
+   - 新增 `tests/test_low_latency_event_bus.py`
+   - 新增 `tests/test_event_bus_benchmark.py`
+   - 新增 `tests/test_replay_resource_governance.py`
+
+5. 文件更新
+   - 更新 `src/cryptoquant/backtest/__init__.py` 導出新增 API
+   - 更新 `docs/ROADMAP.md`：勾選 `大樣本回放資源治理（memory / queue backpressure 可觀測）`
+
+驗證結果：
+- `./venv_ci_cryptoquant/bin/pytest -q` ✅

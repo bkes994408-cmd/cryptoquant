@@ -53,4 +53,4 @@
 - [x] 高頻交易基礎設施調優（低延遲、高吞吐量）
 - [x] 回測事件匯流排壓測基準（p95 latency / max throughput）
 - [x] 策略穩健性驗證（walk-forward / regime split）
-- [ ] 大樣本回放資源治理（memory / queue backpressure 可觀測）
+- [x] 大樣本回放資源治理（memory / queue backpressure 可觀測）
