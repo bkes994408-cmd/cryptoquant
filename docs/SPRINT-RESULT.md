@@ -4,7 +4,8 @@
 
 1. 新增策略穩健性驗證模組
    - 新增 `src/cryptoquant/backtest/robustness.py`
-   - 提供 `run_walk_forward_validation(...)`：以 rolling train/test window 做 walk-forward 驗證
+   - 提供 `run_walk_forward_validation(...)`：
+     以 rolling train/test window 做 walk-forward 驗證
    - 提供 `run_regime_split_validation(...)`：依報酬率閾值拆分 bull / sideways / bear regime
    - 提供 `evaluate_strategy_metrics(...)`：輸出交易次數、turnover、PnL、報酬率、win rate
 
@@ -24,6 +25,7 @@
    - 更新 `docs/ROADMAP.md`：勾選 `策略穩健性驗證（walk-forward / regime split）`
 
 驗證結果：
+
 - `./venv_ci_cryptoquant/bin/pytest -q` ✅
 
 ---
@@ -32,13 +34,16 @@
 
 1. 新增事件匯流排壓測框架
    - 新增 `src/cryptoquant/backtest/event_bus_benchmark.py`
-   - 提供 `run_event_bus_benchmark(...)`，輸出 `p50/p95/p99/max latency (us)` 與 `throughput (events/sec)`
+   - 提供 `run_event_bus_benchmark(...)`，
+     輸出 `p50/p95/p99/max latency (us)` 與 `throughput (events/sec)`
    - 支援 warmup、worker/batch/queue 配置，並可切換 drop-on-full 或 block-on-full
 
 2. 新增可直接執行的壓測腳本
    - 新增 `scripts/benchmark_event_bus.py`
    - 範例：
-     - `PYTHONPATH=src ./venv_ci_cryptoquant/bin/python scripts/benchmark_event_bus.py --events 100000 --warmup-events 10000 --workers 2 --batch-size 256`
+     - `PYTHONPATH=src ./venv_ci_cryptoquant/bin/python`
+       `scripts/benchmark_event_bus.py --events 100000 --warmup-events 10000`
+       `--workers 2 --batch-size 256`
 
 3. 測試補齊
    - 新增 `tests/test_event_bus_benchmark.py`
@@ -49,6 +54,7 @@
    - 更新 `docs/ROADMAP.md`：勾選 `回測事件匯流排壓測基準（p95 latency / max throughput）`
 
 驗證結果：
+
 - `./venv_ci_cryptoquant/bin/pytest -q` ✅
 
 ---
@@ -76,6 +82,7 @@
    - 勾選該階段首個完成項：`高頻交易基礎設施調優（低延遲、高吞吐量）`
 
 驗證結果：
+
 - `./venv_ci_cryptoquant/bin/pytest -q` ✅
 
 ---
@@ -102,6 +109,7 @@
    - 更新 `docs/ROADMAP.md`：勾選 `MVP-5` 子項 `高頻交易基礎設施調優（低延遲、高吞吐量）`
 
 驗證結果：
+
 - `./venv_ci_cryptoquant/bin/pytest -q` ✅
 
 ---
@@ -239,7 +247,8 @@
    - 報告欄位包含 `peak_memory_kb`、`queue_high_watermark`、`max_queue_utilization`、`backpressure_count`
 
 2. 擴充事件匯流排可觀測性
-   - 擴充 `src/cryptoquant/events/bus.py`：`LowLatencyEventBus` 新增 queue 水位與 backpressure 計數
+   - 擴充 `src/cryptoquant/events/bus.py`：
+     `LowLatencyEventBus` 新增 queue 水位與 backpressure 計數
    - `DispatchStats` 新增 `queue_capacity`、`queue_high_watermark`、`backpressure_count`
 
 3. 壓測輸出補齊資源治理指標
@@ -256,4 +265,5 @@
    - 更新 `docs/ROADMAP.md`：勾選 `大樣本回放資源治理（memory / queue backpressure 可觀測）`
 
 驗證結果：
+
 - `./venv_ci_cryptoquant/bin/pytest -q` ✅
