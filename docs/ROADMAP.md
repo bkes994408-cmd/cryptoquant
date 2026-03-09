@@ -54,3 +54,8 @@
 - [x] 回測事件匯流排壓測基準（p95 latency / max throughput）
 - [x] 策略穩健性驗證（walk-forward / regime split）
 - [x] 大樣本回放資源治理（memory / queue backpressure 可觀測）
+
+## MVP-7：多策略投資組合優化
+
+- [x] 多策略投資組合優化（風險調整收益）
+- [ ] 投資組合再平衡排程與交易成本敏感度分析
