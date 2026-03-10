@@ -60,11 +60,6 @@
 - [x] 多策略投資組合優化（風險調整收益）
 - [x] 投資組合再平衡排程與交易成本敏感度分析
 
-## MVP-8：實時風控預警與動態停損機制
+## MVP-8：實時交易集成與高級風控
 
-- [x] 新增風控預警參數 `warn_utilization_pct`（0 < x < 1）
-- [x] 新增 `dynamic_stop.trailing_pct` 參數與邊界驗證（0 < x < 1）
-- [x] 實作 `risk.notional.near_cap` / `risk.leverage.near_cap` 即時告警
-- [x] 實作 dynamic stop 觸發與強制 flatten 行為
-- [x] 告警節流/去重：near-cap 告警採閾值穿越觸發
-- [x] 補齊動態停損與 side flip（多→空→多）序列測試
+- [x] 交易所 API 集成與多帳戶管理
