@@ -13,9 +13,13 @@ class BacktestResult:
 
 
 class EventReplayer:
-    """Replay market events and route generated market orders to PaperExecutor."""
+    """Replay market events and route generated market orders to PaperExecutor.
 
-    def __init__(self, executor: PaperExecutor, *, symbol: str) -> None:
+    - If `symbol` is provided, only that symbol is replayed (legacy behavior).
+    - If `symbol` is None, events for all symbols are replayed.
+    """
+
+    def __init__(self, executor: PaperExecutor, *, symbol: str | None = None) -> None:
         self._executor = executor
         self._symbol = symbol
 
@@ -28,39 +32,22 @@ class EventReplayer:
     ) -> BacktestResult:
         fills: list[Fill] = []
         for idx, event in enumerate(sorted(events, key=lambda e: e.ts), start=1):
-            if event.symbol != self._symbol:
+            if self._symbol is not None and event.symbol != self._symbol:
                 continue
+
+            symbol = event.symbol
             target_qty = target_qty_fn(event)
-            current_qty = self._executor.position_qty(self._symbol)
-
-            is_flip = current_qty != 0 and target_qty != 0 and (current_qty > 0) != (target_qty > 0)
-            if is_flip:
-                close_fill = self._executor.execute_market(
-                    client_order_id=f"{order_id_prefix}-{idx}-close",
-                    symbol=self._symbol,
-                    qty=-current_qty,
-                    mark_price=event.close,
-                    ts=event.ts,
-                )
-                open_fill = self._executor.execute_market(
-                    client_order_id=f"{order_id_prefix}-{idx}-open",
-                    symbol=self._symbol,
-                    qty=target_qty,
-                    mark_price=event.close,
-                    ts=event.ts,
-                )
-                fills.extend([close_fill, open_fill])
+            current_qty = self._executor.position_qty(symbol)
+            if current_qty == target_qty:
                 continue
 
-            delta = target_qty - current_qty
-            if delta == 0:
-                continue
-            fill = self._executor.execute_market(
-                client_order_id=f"{order_id_prefix}-{idx}",
-                symbol=self._symbol,
-                qty=delta,
+            legs = self._executor.execute_to_target(
+                client_order_id_prefix=f"{order_id_prefix}-{idx}",
+                symbol=symbol,
+                current_qty=current_qty,
+                target_qty=target_qty,
                 mark_price=event.close,
                 ts=event.ts,
             )
-            fills.append(fill)
+            fills.extend(legs)
         return BacktestResult(fills=fills)

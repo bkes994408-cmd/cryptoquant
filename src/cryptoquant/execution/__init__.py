@@ -1,5 +1,5 @@
 from .binance_gateway import BinanceFuturesOrderGateway, BinanceGatewayConfig, HttpTransport
-from .dry_run import DryRunResult, run_testnet_dry_run
+from .dry_run import DryRunRequest, DryRunResult, run_testnet_dry_run, run_testnet_dry_run_batch
 from .listen_key import BinanceAuthConfig, BinanceFuturesListenKeyProvider
 from .live import LiveExecutor, LiveOrderAck, LiveOrderRequest, OrderGateway
 from .paper import Fill, PaperExecutor
@@ -12,8 +12,10 @@ __all__ = [
     "BinanceGatewayConfig",
     "HttpTransport",
     "BinanceFuturesOrderGateway",
+    "DryRunRequest",
     "DryRunResult",
     "run_testnet_dry_run",
+    "run_testnet_dry_run_batch",
     "LiveOrderRequest",
     "LiveOrderAck",
     "OrderGateway",
