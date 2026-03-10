@@ -60,8 +60,8 @@ class RiskManager:
             raise ValueError("daily_stop_drawdown_pct must be positive")
         if not (0 < limits.warn_utilization_pct < 1):
             raise ValueError("warn_utilization_pct must be in (0, 1)")
-        if limits.dynamic_stop is not None and limits.dynamic_stop.trailing_pct <= 0:
-            raise ValueError("dynamic_stop.trailing_pct must be positive")
+        if limits.dynamic_stop is not None and not (0 < limits.dynamic_stop.trailing_pct < 1):
+            raise ValueError("dynamic_stop.trailing_pct must be in (0, 1)")
         self._limits = limits
         self._alert_sink = alert_sink
         self._daily_anchor_day: date | None = None

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
+import pytest
+
 from cryptoquant.risk import (
     DynamicStopConfig,
     RiskAlert,
@@ -205,3 +207,60 @@ def test_dynamic_stop_resets_after_flatten_and_allows_reentry() -> None:
     # Position is flattened externally; next signal can open a new position.
     reentry = mgr.apply(RiskInput(price=103, equity=10_000, current_qty=0, target_qty=1))
     assert reentry.approved_qty == 1
+
+
+def test_dynamic_stop_rejects_invalid_trailing_pct_bounds() -> None:
+    with pytest.raises(ValueError):
+        RiskManager(
+            RiskLimits(
+                notional_cap=100_000,
+                leverage_cap=10,
+                dynamic_stop=DynamicStopConfig(trailing_pct=1.0),
+            )
+        )
+
+    with pytest.raises(ValueError):
+        RiskManager(
+            RiskLimits(
+                notional_cap=100_000,
+                leverage_cap=10,
+                dynamic_stop=DynamicStopConfig(trailing_pct=-0.01),
+            )
+        )
+
+
+def test_dynamic_stop_allows_same_side_reduce_after_trigger() -> None:
+    mgr = RiskManager(
+        RiskLimits(
+            notional_cap=100_000,
+            leverage_cap=10,
+            dynamic_stop=DynamicStopConfig(trailing_pct=0.05),
+        )
+    )
+
+    mgr.apply(RiskInput(price=100, equity=10_000, current_qty=2, target_qty=2))
+    mgr.apply(RiskInput(price=110, equity=10_000, current_qty=2, target_qty=2))
+
+    # Trigger stop then request same-side reduction, which should be allowed.
+    reduce_result = mgr.apply(RiskInput(price=104, equity=10_000, current_qty=2, target_qty=1))
+    assert reduce_result.approved_qty == 1
+
+
+def test_dynamic_stop_resets_when_side_flips() -> None:
+    mgr = RiskManager(
+        RiskLimits(
+            notional_cap=100_000,
+            leverage_cap=10,
+            dynamic_stop=DynamicStopConfig(trailing_pct=0.05),
+        )
+    )
+
+    # Long side: trigger stop.
+    mgr.apply(RiskInput(price=100, equity=10_000, current_qty=1, target_qty=1))
+    mgr.apply(RiskInput(price=110, equity=10_000, current_qty=1, target_qty=1))
+    long_stop = mgr.apply(RiskInput(price=104, equity=10_000, current_qty=1, target_qty=1))
+    assert long_stop.approved_qty == 0.0
+
+    # Side flips to short; trailing state should reset and allow open.
+    short_open = mgr.apply(RiskInput(price=103, equity=10_000, current_qty=-1, target_qty=-1))
+    assert short_open.approved_qty == -1
