@@ -72,6 +72,9 @@ class RiskManager:
         self._tracked_extreme_price: float | None = None
         self._dynamic_stop_triggered = False
 
+        self._notional_warn_active = False
+        self._leverage_warn_active = False
+
     def apply(self, req: RiskInput) -> RiskResult:
         if req.price <= 0:
             return RiskResult(0.0, 0.0, 0.0, "rejected: invalid price")
@@ -183,7 +186,10 @@ class RiskManager:
         notional_util = notional / self._limits.notional_cap
         leverage_util = leverage / self._limits.leverage_cap
 
-        if notional_util >= self._limits.warn_utilization_pct:
+        notional_over = notional_util >= self._limits.warn_utilization_pct
+        leverage_over = leverage_util >= self._limits.warn_utilization_pct
+
+        if notional_over and not self._notional_warn_active:
             self._emit_alert(
                 RiskAlert(
                     level=RiskAlertLevel.WARN,
@@ -191,7 +197,9 @@ class RiskManager:
                     message=f"notional utilization high: {notional_util:.1%}",
                 )
             )
-        if leverage_util >= self._limits.warn_utilization_pct:
+        self._notional_warn_active = notional_over
+
+        if leverage_over and not self._leverage_warn_active:
             self._emit_alert(
                 RiskAlert(
                     level=RiskAlertLevel.WARN,
@@ -199,6 +207,7 @@ class RiskManager:
                     message=f"leverage utilization high: {leverage_util:.1%}",
                 )
             )
+        self._leverage_warn_active = leverage_over
 
     def _emit_alert(self, alert: RiskAlert) -> None:
         if self._alert_sink is not None:
