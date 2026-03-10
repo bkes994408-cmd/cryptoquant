@@ -2,6 +2,26 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, datetime
+from enum import Enum
+from typing import Callable
+
+
+class RiskAlertLevel(str, Enum):
+    INFO = "INFO"
+    WARN = "WARN"
+    ERROR = "ERROR"
+
+
+@dataclass(frozen=True)
+class RiskAlert:
+    level: RiskAlertLevel
+    code: str
+    message: str
+
+
+@dataclass(frozen=True)
+class DynamicStopConfig:
+    trailing_pct: float
 
 
 @dataclass(frozen=True)
@@ -9,6 +29,8 @@ class RiskLimits:
     notional_cap: float
     leverage_cap: float
     daily_stop_drawdown_pct: float | None = None
+    warn_utilization_pct: float = 0.85
+    dynamic_stop: DynamicStopConfig | None = None
 
 
 @dataclass(frozen=True)
@@ -29,17 +51,26 @@ class RiskResult:
 
 
 class RiskManager:
-    """Apply minimal position caps for paper trading."""
+    """Apply position caps, real-time alerts, and dynamic stop-loss constraints."""
 
-    def __init__(self, limits: RiskLimits) -> None:
+    def __init__(self, limits: RiskLimits, *, alert_sink: Callable[[RiskAlert], None] | None = None) -> None:
         if limits.notional_cap <= 0 or limits.leverage_cap <= 0:
             raise ValueError("risk caps must be positive")
         if limits.daily_stop_drawdown_pct is not None and limits.daily_stop_drawdown_pct <= 0:
             raise ValueError("daily_stop_drawdown_pct must be positive")
+        if not (0 < limits.warn_utilization_pct < 1):
+            raise ValueError("warn_utilization_pct must be in (0, 1)")
+        if limits.dynamic_stop is not None and limits.dynamic_stop.trailing_pct <= 0:
+            raise ValueError("dynamic_stop.trailing_pct must be positive")
         self._limits = limits
+        self._alert_sink = alert_sink
         self._daily_anchor_day: date | None = None
         self._daily_anchor_equity: float | None = None
         self._daily_stop_triggered = False
+
+        self._tracked_side: int = 0
+        self._tracked_extreme_price: float | None = None
+        self._dynamic_stop_triggered = False
 
     def apply(self, req: RiskInput) -> RiskResult:
         if req.price <= 0:
@@ -48,14 +79,26 @@ class RiskManager:
             return RiskResult(0.0, 0.0, 0.0, "rejected: non-positive equity")
 
         self._refresh_daily_state(req)
-        if self._daily_stop_triggered and self._is_opening_new_risk(req.current_qty, req.target_qty):
+        self._refresh_dynamic_stop_state(req)
+
+        approved = req.target_qty
+        if self._daily_stop_triggered and self._is_opening_new_risk(req.current_qty, approved):
             return RiskResult(0.0, 0.0, 0.0, "rejected: daily stop")
+
+        if self._dynamic_stop_triggered and self._is_maintaining_or_adding_risk(req.current_qty, approved):
+            approved = 0.0
+            self._emit_alert(
+                RiskAlert(
+                    level=RiskAlertLevel.ERROR,
+                    code="risk.dynamic_stop.enforced",
+                    message="dynamic stop-loss enforced: force flatten target to zero",
+                )
+            )
 
         max_by_notional = self._limits.notional_cap / req.price
         max_by_leverage = (self._limits.leverage_cap * req.equity) / req.price
         max_abs_qty = min(max_by_notional, max_by_leverage)
 
-        approved = req.target_qty
         reason = "approved"
         if abs(approved) > max_abs_qty:
             approved = max_abs_qty if approved > 0 else -max_abs_qty
@@ -63,6 +106,7 @@ class RiskManager:
 
         notional = abs(approved) * req.price
         leverage = notional / req.equity
+        self._emit_utilization_alerts(notional=notional, leverage=leverage)
         return RiskResult(approved, notional, leverage, reason)
 
     def _refresh_daily_state(self, req: RiskInput) -> None:
@@ -81,8 +125,84 @@ class RiskManager:
         if anchor is None or anchor <= 0:
             return
         drawdown_pct = (anchor - req.equity) / anchor
-        if drawdown_pct >= stop_pct:
+        if drawdown_pct >= stop_pct and not self._daily_stop_triggered:
             self._daily_stop_triggered = True
+            self._emit_alert(
+                RiskAlert(
+                    level=RiskAlertLevel.ERROR,
+                    code="risk.daily_stop.triggered",
+                    message=f"daily stop triggered at drawdown={drawdown_pct:.2%}",
+                )
+            )
+
+    def _refresh_dynamic_stop_state(self, req: RiskInput) -> None:
+        conf = self._limits.dynamic_stop
+        if conf is None:
+            return
+
+        current_side = self._side(req.current_qty)
+        if current_side == 0:
+            self._tracked_side = 0
+            self._tracked_extreme_price = None
+            self._dynamic_stop_triggered = False
+            return
+
+        if self._tracked_side != current_side:
+            self._tracked_side = current_side
+            self._tracked_extreme_price = req.price
+            self._dynamic_stop_triggered = False
+            return
+
+        if self._tracked_extreme_price is None:
+            self._tracked_extreme_price = req.price
+            return
+
+        if current_side > 0:
+            self._tracked_extreme_price = max(self._tracked_extreme_price, req.price)
+            stop_price = self._tracked_extreme_price * (1 - conf.trailing_pct)
+            hit = req.price <= stop_price
+        else:
+            self._tracked_extreme_price = min(self._tracked_extreme_price, req.price)
+            stop_price = self._tracked_extreme_price * (1 + conf.trailing_pct)
+            hit = req.price >= stop_price
+
+        if hit and not self._dynamic_stop_triggered:
+            self._dynamic_stop_triggered = True
+            self._emit_alert(
+                RiskAlert(
+                    level=RiskAlertLevel.WARN,
+                    code="risk.dynamic_stop.triggered",
+                    message=(
+                        f"dynamic stop triggered: side={'LONG' if current_side > 0 else 'SHORT'} "
+                        f"price={req.price:.6f} stop={stop_price:.6f}"
+                    ),
+                )
+            )
+
+    def _emit_utilization_alerts(self, *, notional: float, leverage: float) -> None:
+        notional_util = notional / self._limits.notional_cap
+        leverage_util = leverage / self._limits.leverage_cap
+
+        if notional_util >= self._limits.warn_utilization_pct:
+            self._emit_alert(
+                RiskAlert(
+                    level=RiskAlertLevel.WARN,
+                    code="risk.notional.near_cap",
+                    message=f"notional utilization high: {notional_util:.1%}",
+                )
+            )
+        if leverage_util >= self._limits.warn_utilization_pct:
+            self._emit_alert(
+                RiskAlert(
+                    level=RiskAlertLevel.WARN,
+                    code="risk.leverage.near_cap",
+                    message=f"leverage utilization high: {leverage_util:.1%}",
+                )
+            )
+
+    def _emit_alert(self, alert: RiskAlert) -> None:
+        if self._alert_sink is not None:
+            self._alert_sink(alert)
 
     @staticmethod
     def _is_opening_new_risk(current_qty: float, target_qty: float) -> bool:
@@ -93,3 +213,21 @@ class RiskManager:
         if current_qty * target_qty < 0:
             return True
         return abs(target_qty) > abs(current_qty)
+
+    @staticmethod
+    def _is_maintaining_or_adding_risk(current_qty: float, target_qty: float) -> bool:
+        if current_qty == 0:
+            return False
+        if target_qty == 0:
+            return False
+        if current_qty * target_qty < 0:
+            return False
+        return abs(target_qty) >= abs(current_qty)
+
+    @staticmethod
+    def _side(qty: float) -> int:
+        if qty > 0:
+            return 1
+        if qty < 0:
+            return -1
+        return 0
