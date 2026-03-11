@@ -1,5 +1,42 @@
 # Sprint Result
 
+## MVP-8：實時交易集成與高級風控 / 訂單簿深度與微觀結構分析（2026-03-11）
+
+1. 新增訂單簿微觀結構分析模組
+   - 新增 `src/cryptoquant/market/microstructure.py`
+   - 提供：
+     - `OrderBookSnapshot` / `OrderBookLevel`
+     - `OrderBookMicrostructureAnalyzer`
+     - `MicrostructureMetrics`
+   - 指標涵蓋：
+     - spread / spread_bps / mid_price
+     - top-of-book `micro_price`
+     - depth（bid/ask）與 depth imbalance
+     - side VWAP（指定 depth level）
+     - OFI（order flow imbalance，以上一筆 top-of-book 比較）
+
+2. API 導出
+   - 更新 `src/cryptoquant/market/__init__.py`
+   - 導出 microstructure 核心資料結構與 analyzer
+
+3. 測試補齊
+   - 新增 `tests/test_orderbook_microstructure.py`
+   - 覆蓋：
+     - spread/depth/depth imbalance 正確性
+     - micro_price 計算
+     - OFI 在 top-of-book 變化下的方向性
+     - 參數防呆（invalid depth levels）
+
+4. 文件更新
+   - 更新 `docs/ROADMAP.md`：勾選 `MVP-8` 子項 `訂單簿深度與微觀結構分析`
+
+驗證結果：
+
+- `pytest -q tests/test_orderbook_microstructure.py` ✅
+- `pytest -q` ✅
+
+---
+
 ## MVP-6：進階回測策略驗證框架 / 策略穩健性驗證（walk-forward / regime split）（2026-03-09）
 
 1. 新增策略穩健性驗證模組
