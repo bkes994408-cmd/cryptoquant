@@ -2,9 +2,11 @@
 
 MVP-driven quantitative trading scaffold（事件驅動 + 可測試 execution/risk/strategy 模組）。
 
-## MVP-8：交易所 API 集成與多帳戶管理（目前完成範圍）
+## MVP-8：交易所 API 集成與高級風控（目前完成範圍）
 
-本次交付聚焦 **Binance Futures + 多帳戶 live execution** 的最小可用能力：
+本次交付目前已完成：
+
+1) **Binance Futures + 多帳戶 live execution** 最小可用能力：
 
 - `BinanceFuturesOrderGateway`：可發送市場單並回傳標準化 ack。
 - `MultiAccountBinanceGateway`：依 `account_id` 路由到對應 API 金鑰。
@@ -15,6 +17,12 @@ MVP-driven quantitative trading scaffold（事件驅動 + 可測試 execution/ri
   - 帳戶集合一致性驗證（`oms_by_account` 必須與 gateway 帳戶集合一致）
 
 > 非本次範圍：完整資產同步、WebSocket user stream、資金費率與保證金管理、跨交易所抽象。
+
+2) **訂單簿深度與微觀結構分析**：
+
+- `OrderBookMicrostructureAnalyzer`：對 order book snapshot 產生可用於策略/風控的即時指標。
+- 內建指標：`spread`、`spread_bps`、`mid_price`、`micro_price`、`depth_imbalance`、`order_flow_imbalance`。
+- 可指定 `depth_levels`，統計前 N 檔深度與 side VWAP。
 
 ## 最小可用範例
 
