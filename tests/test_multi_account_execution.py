@@ -9,6 +9,7 @@ from cryptoquant.execution import (
     MultiAccountOrderRequest,
 )
 from cryptoquant.oms import OMS
+from cryptoquant.risk import KillSwitch
 
 
 class SequenceTransport:
@@ -64,7 +65,13 @@ def test_multi_account_gateway_routes_by_account_id() -> None:
     assert transport.calls[1][1]["X-MBX-APIKEY"] == "key-b"
 
 
-def test_multi_account_gateway_rejects_unknown_or_duplicate_account() -> None:
+def test_multi_account_gateway_rejects_empty_or_unsupported_or_duplicate_account() -> None:
+    with pytest.raises(ValueError, match="accounts must not be empty"):
+        MultiAccountBinanceGateway([])
+
+    with pytest.raises(ValueError, match="unsupported exchange"):
+        MultiAccountBinanceGateway([ExchangeAccountConfig("acct-a", "okx", "k1", "s1")])
+
     with pytest.raises(ValueError, match="duplicate account_id"):
         MultiAccountBinanceGateway(
             [
@@ -73,6 +80,8 @@ def test_multi_account_gateway_rejects_unknown_or_duplicate_account() -> None:
             ]
         )
 
+
+def test_multi_account_gateway_rejects_unknown_account() -> None:
     gateway = MultiAccountBinanceGateway([ExchangeAccountConfig("acct-a", "binance", "k1", "s1")])
     with pytest.raises(ValueError, match="unknown account_id"):
         gateway.place_market_order(
@@ -120,3 +129,70 @@ def test_multi_account_live_executor_rejects_unknown_account() -> None:
 
     with pytest.raises(ValueError, match="unknown account_id"):
         executor.execute_market(MultiAccountOrderRequest("acct-x", "cid", "BTCUSDT", 1.0))
+
+
+def test_multi_account_live_executor_rejects_qty_zero() -> None:
+    gateway = MultiAccountBinanceGateway(
+        [ExchangeAccountConfig("acct-a", "binance", "k", "s", base_url="https://example.com")],
+        transport=SequenceTransport([{"orderId": 1, "updateTime": 1_700_000_000_000}]),
+    )
+    executor = MultiAccountLiveExecutor(oms_by_account={"acct-a": OMS()}, gateway=gateway)
+
+    with pytest.raises(ValueError, match="qty must be non-zero"):
+        executor.execute_market(MultiAccountOrderRequest("acct-a", "cid", "BTCUSDT", 0))
+
+
+def test_multi_account_live_executor_rejects_when_kill_switch_engaged() -> None:
+    gateway = MultiAccountBinanceGateway(
+        [ExchangeAccountConfig("acct-a", "binance", "k", "s", base_url="https://example.com")],
+        transport=SequenceTransport([{"orderId": 1, "updateTime": 1_700_000_000_000}]),
+    )
+    kill_switch = KillSwitch()
+    kill_switch.engage("test")
+    executor = MultiAccountLiveExecutor(
+        oms_by_account={"acct-a": OMS()},
+        gateway=gateway,
+        kill_switch=kill_switch,
+    )
+
+    with pytest.raises(RuntimeError, match="kill switch active"):
+        executor.execute_market(MultiAccountOrderRequest("acct-a", "cid", "BTCUSDT", 1.0))
+
+
+def test_multi_account_live_executor_rejects_empty_oms_mapping() -> None:
+    gateway = MultiAccountBinanceGateway(
+        [ExchangeAccountConfig("acct-a", "binance", "k", "s", base_url="https://example.com")],
+        transport=SequenceTransport([{"orderId": 1, "updateTime": 1_700_000_000_000}]),
+    )
+
+    with pytest.raises(ValueError, match="oms_by_account must not be empty"):
+        MultiAccountLiveExecutor(oms_by_account={}, gateway=gateway)
+
+
+def test_multi_account_live_executor_rejects_mismatched_account_sets() -> None:
+    gateway = MultiAccountBinanceGateway(
+        [
+            ExchangeAccountConfig("acct-a", "binance", "ka", "sa", base_url="https://example.com"),
+            ExchangeAccountConfig("acct-b", "binance", "kb", "sb", base_url="https://example.com"),
+        ],
+        transport=SequenceTransport([{"orderId": 1, "updateTime": 1_700_000_000_000}]),
+    )
+
+    with pytest.raises(ValueError, match="account set mismatch"):
+        MultiAccountLiveExecutor(oms_by_account={"acct-a": OMS()}, gateway=gateway)
+
+
+def test_multi_account_live_executor_rejects_conflict_same_id_different_payload() -> None:
+    transport = SequenceTransport([{"orderId": 1, "updateTime": 1_700_000_000_000}])
+    gateway = MultiAccountBinanceGateway(
+        [ExchangeAccountConfig("acct-a", "binance", "k", "s", base_url="https://example.com")],
+        transport=transport,
+    )
+    executor = MultiAccountLiveExecutor(oms_by_account={"acct-a": OMS()}, gateway=gateway)
+
+    executor.execute_market(MultiAccountOrderRequest("acct-a", "cid-1", "BTCUSDT", 1.0))
+
+    with pytest.raises(ValueError, match="conflicting payload"):
+        executor.execute_market(MultiAccountOrderRequest("acct-a", "cid-1", "ETHUSDT", 1.0))
+
+    assert len(transport.calls) == 1
