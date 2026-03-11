@@ -23,6 +23,10 @@ class RiskAlert:
 class DynamicStopConfig:
     trailing_pct: float
 
+    def __post_init__(self) -> None:
+        if not (0 < self.trailing_pct < 1):
+            raise ValueError("dynamic_stop.trailing_pct must be in (0, 1)")
+
 
 @dataclass(frozen=True)
 class RiskLimits:

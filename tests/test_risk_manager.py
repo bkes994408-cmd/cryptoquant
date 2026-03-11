@@ -201,6 +201,12 @@ def test_dynamic_stop_resets_after_flatten_and_allows_reentry() -> None:
 
 def test_dynamic_stop_trailing_pct_must_be_in_open_interval_zero_one() -> None:
     with pytest.raises(ValueError, match=r"dynamic_stop.trailing_pct must be in \(0, 1\)"):
+        DynamicStopConfig(trailing_pct=0.0)
+
+    with pytest.raises(ValueError, match=r"dynamic_stop.trailing_pct must be in \(0, 1\)"):
+        DynamicStopConfig(trailing_pct=-0.01)
+
+    with pytest.raises(ValueError, match=r"dynamic_stop.trailing_pct must be in \(0, 1\)"):
         RiskManager(
             RiskLimits(
                 notional_cap=10_000,
