@@ -68,6 +68,25 @@ ack = executor.execute_market(
 print(ack.exchange_order_id, ack.ack_ts_ms)
 ```
 
+## 風控語義：Dynamic Stop（Trailing）
+
+`RiskManager` 在 `dynamic_stop` 啟用時，會根據目前持倉方向追蹤「有利極值」：
+
+- `LONG`：追蹤最高價，stop = `extreme * (1 - trailing_pct)`
+- `SHORT`：追蹤最低價，stop = `extreme * (1 + trailing_pct)`
+
+當價格觸發 stop 後，`dynamic_stop_triggered=True`，且當前決策會**強制把同向維持/加碼目標壓成 0（flatten）**。
+
+### 觸發後的翻向開倉策略（避免歧義）
+
+Dynamic stop 觸發後，系統策略是：
+
+- ✅ **允許風險降低/平倉**（同向減倉、到 0）
+- ✅ **允許翻向開倉**（例如 LONG 停損後可直接開 SHORT，或反之）
+- ❌ **不允許同向維持或加碼**（直到倉位狀態更新為可追蹤的新 side）
+
+也就是說，dynamic stop 的目標是「阻止原方向風險延續」，不是凍結所有交易行為。
+
 ## 開發
 
 ```bash

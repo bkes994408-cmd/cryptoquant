@@ -325,3 +325,52 @@ def test_risk_status_reports_dynamic_stop_price() -> None:
     assert status.tracked_side == 1
     assert status.tracked_extreme_price == 120
     assert status.dynamic_stop_price == pytest.approx(108.0)
+
+
+def test_risk_status_reports_dynamic_stop_price_for_short_side() -> None:
+    mgr = RiskManager(
+        RiskLimits(
+            notional_cap=100_000,
+            leverage_cap=10,
+            dynamic_stop=DynamicStopConfig(trailing_pct=0.1),
+        )
+    )
+
+    mgr.apply(RiskInput(price=100, equity=10_000, current_qty=-2, target_qty=-2))
+    mgr.apply(RiskInput(price=80, equity=10_100, current_qty=-2, target_qty=-2))
+
+    status = mgr.status()
+    assert status.tracked_side == -1
+    assert status.tracked_extreme_price == 80
+    assert status.dynamic_stop_price == pytest.approx(88.0)
+
+
+def test_risk_status_dynamic_stop_price_is_none_when_dynamic_stop_disabled() -> None:
+    mgr = RiskManager(RiskLimits(notional_cap=100_000, leverage_cap=10, dynamic_stop=None))
+
+    mgr.apply(RiskInput(price=100, equity=10_000, current_qty=1, target_qty=1))
+
+    status = mgr.status()
+    assert status.dynamic_stop_triggered is False
+    assert status.tracked_side == 0
+    assert status.tracked_extreme_price is None
+    assert status.dynamic_stop_price is None
+
+
+def test_risk_status_dynamic_stop_price_is_none_when_tracked_side_is_flat() -> None:
+    mgr = RiskManager(
+        RiskLimits(
+            notional_cap=100_000,
+            leverage_cap=10,
+            dynamic_stop=DynamicStopConfig(trailing_pct=0.1),
+        )
+    )
+
+    mgr.apply(RiskInput(price=100, equity=10_000, current_qty=1, target_qty=1))
+    mgr.apply(RiskInput(price=120, equity=10_100, current_qty=1, target_qty=1))
+    mgr.apply(RiskInput(price=110, equity=10_050, current_qty=0, target_qty=0))
+
+    status = mgr.status()
+    assert status.tracked_side == 0
+    assert status.tracked_extreme_price is None
+    assert status.dynamic_stop_price is None

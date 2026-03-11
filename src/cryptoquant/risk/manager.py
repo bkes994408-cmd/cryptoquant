@@ -201,6 +201,21 @@ class RiskManager:
             )
 
     def status(self) -> RiskStatus:
+        """Return the current risk-state snapshot for observability and diagnostics.
+
+        Field semantics:
+        - ``daily_stop_triggered``: whether daily drawdown stop is currently active.
+        - ``dynamic_stop_triggered``: whether trailing dynamic stop has been hit on the
+          currently tracked position side.
+        - ``tracked_side``: position side being tracked by dynamic stop logic
+          (1=long, -1=short, 0=flat/not tracking).
+        - ``tracked_extreme_price``: best favorable price observed since current side was
+          first tracked (highest for long, lowest for short).
+        - ``dynamic_stop_price``: current computed trailing stop threshold from
+          ``tracked_extreme_price`` and ``dynamic_stop.trailing_pct``. This is ``None``
+          when dynamic stop is disabled, when there is no tracked extreme price yet, or
+          when no side is being tracked (``tracked_side == 0``).
+        """
         return RiskStatus(
             daily_stop_triggered=self._daily_stop_triggered,
             dynamic_stop_triggered=self._dynamic_stop_triggered,
