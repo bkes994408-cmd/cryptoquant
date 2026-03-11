@@ -1,37 +1,68 @@
 # cryptoquant
 
-Minimal event-driven scaffold for a future Paper/Backtest engine.
+MVP-driven quantitative trading scaffold（事件驅動 + 可測試 execution/risk/strategy 模組）。
 
-## Risk Manager（MVP-8）
+## MVP-8：交易所 API 集成與多帳戶管理（目前完成範圍）
 
-`RiskManager` 支援：
+本次交付聚焦 **Binance Futures + 多帳戶 live execution** 的最小可用能力：
 
-- `notional_cap` / `leverage_cap` 倉位上限
-- `daily_stop_drawdown_pct` 每日回撤停手
-- `warn_utilization_pct` 風險利用率預警閾值（`0 < x < 1`）
-- `dynamic_stop.trailing_pct` 動態停損回撤比例（`0 < x < 1`）
+- `BinanceFuturesOrderGateway`：可發送市場單並回傳標準化 ack。
+- `MultiAccountBinanceGateway`：依 `account_id` 路由到對應 API 金鑰。
+- `MultiAccountLiveExecutor`：
+  - 每帳戶獨立 idempotency（`account_id + client_order_id`）
+  - `KillSwitch` 防護
+  - 下單前風險檢查（含 `qty != 0`）
+  - 帳戶集合一致性驗證（`oms_by_account` 必須與 gateway 帳戶集合一致）
 
-### Dynamic stop 行為
+> 非本次範圍：完整資產同步、WebSocket user stream、資金費率與保證金管理、跨交易所抽象。
 
-- Long：追蹤最高價，當 `price <= extreme * (1 - trailing_pct)` 觸發
-- Short：追蹤最低價，當 `price >= extreme * (1 + trailing_pct)` 觸發
-- 觸發後若策略要求同向維持/加碼，風控強制 `target_qty = 0`
-- 觸發後若策略要求同向減倉，允許執行
-- 平倉或換向後，trailing 狀態重置
-- 目前無 cooldown
+## 最小可用範例
 
-### Alert codes
+```python
+from cryptoquant.execution import (
+    ExchangeAccountConfig,
+    MultiAccountBinanceGateway,
+    MultiAccountLiveExecutor,
+    MultiAccountOrderRequest,
+)
+from cryptoquant.oms import OMS
 
-- `risk.notional.near_cap`
-- `risk.leverage.near_cap`
-- `risk.daily_stop.triggered`
-- `risk.dynamic_stop.triggered`
-- `risk.dynamic_stop.enforced`
+accounts = [
+    ExchangeAccountConfig(
+        account_id="acct-a",
+        exchange="binance",
+        api_key="<BINANCE_API_KEY_A>",
+        api_secret="<BINANCE_API_SECRET_A>",
+    ),
+    ExchangeAccountConfig(
+        account_id="acct-b",
+        exchange="binance",
+        api_key="<BINANCE_API_KEY_B>",
+        api_secret="<BINANCE_API_SECRET_B>",
+    ),
+]
 
-### 告警節流 / 去重
+gateway = MultiAccountBinanceGateway(accounts)
+executor = MultiAccountLiveExecutor(
+    oms_by_account={"acct-a": OMS(), "acct-b": OMS()},
+    gateway=gateway,
+)
 
-`near_cap` 告警採閾值穿越觸發：
+ack = executor.execute_market(
+    MultiAccountOrderRequest(
+        account_id="acct-a",
+        client_order_id="rebalance-20260311-001",
+        symbol="BTCUSDT",
+        qty=0.01,
+    )
+)
 
-- 利用率首次上穿閾值時發送
-- 持續高於閾值不重複發送
-- 回落後再次上穿才重送
+print(ack.exchange_order_id, ack.ack_ts_ms)
+```
+
+## 開發
+
+```bash
+pip install -e .[dev]
+pytest -q
+```
