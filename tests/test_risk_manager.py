@@ -282,3 +282,46 @@ def test_utilization_alerts_are_deduplicated_for_identical_payloads() -> None:
     codes = [a.code for a in alerts]
     assert codes.count("risk.notional.near_cap") == 1
     assert codes.count("risk.leverage.near_cap") == 1
+
+
+def test_dynamic_stop_enforced_alert_is_deduplicated_until_condition_clears() -> None:
+    alerts: list[RiskAlert] = []
+    mgr = RiskManager(
+        RiskLimits(
+            notional_cap=100_000,
+            leverage_cap=10,
+            dynamic_stop=DynamicStopConfig(trailing_pct=0.05),
+        ),
+        alert_sink=alerts.append,
+    )
+
+    mgr.apply(RiskInput(price=100, equity=10_000, current_qty=2, target_qty=2))
+    mgr.apply(RiskInput(price=110, equity=10_100, current_qty=2, target_qty=2))
+
+    mgr.apply(RiskInput(price=104, equity=10_050, current_qty=2, target_qty=2))
+    mgr.apply(RiskInput(price=103, equity=10_040, current_qty=2, target_qty=2))
+
+    assert [a.code for a in alerts].count("risk.dynamic_stop.enforced") == 1
+
+    mgr.apply(RiskInput(price=103, equity=10_040, current_qty=2, target_qty=1))
+    mgr.apply(RiskInput(price=103, equity=10_040, current_qty=2, target_qty=2))
+
+    assert [a.code for a in alerts].count("risk.dynamic_stop.enforced") == 2
+
+
+def test_risk_status_reports_dynamic_stop_price() -> None:
+    mgr = RiskManager(
+        RiskLimits(
+            notional_cap=100_000,
+            leverage_cap=10,
+            dynamic_stop=DynamicStopConfig(trailing_pct=0.1),
+        )
+    )
+
+    mgr.apply(RiskInput(price=100, equity=10_000, current_qty=1, target_qty=1))
+    mgr.apply(RiskInput(price=120, equity=10_100, current_qty=1, target_qty=1))
+
+    status = mgr.status()
+    assert status.tracked_side == 1
+    assert status.tracked_extreme_price == 120
+    assert status.dynamic_stop_price == pytest.approx(108.0)

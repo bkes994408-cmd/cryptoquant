@@ -1,5 +1,34 @@
 # Sprint Result
 
+## MVP-8：實時交易集成與高級風控 / 實時風控預警與動態停損機制（2026-03-11）
+
+1. 風控模組能力補強（realtime alert + dynamic stop）
+   - 更新 `src/cryptoquant/risk/manager.py`
+   - 新增 `RiskStatus` 狀態快照（daily stop / dynamic stop / side / extreme / stop price）
+   - 動態停損強制平倉告警去重：在條件持續期間只發一次 `risk.dynamic_stop.enforced`，降低告警噪音
+
+2. API 導出
+   - 更新 `src/cryptoquant/risk/__init__.py`、`src/cryptoquant/__init__.py`
+   - 導出 `RiskStatus`
+
+3. 測試補齊
+   - 更新 `tests/test_risk_manager.py`
+   - 覆蓋：
+     - dynamic stop enforced 告警去重與重置行為
+     - `RiskManager.status()` 動態停損價格回報正確性
+
+4. 文件更新
+   - 更新 `docs/ROADMAP.md`：勾選 `MVP-8` 子項 `實時風控預警與動態停損機制`
+
+驗證結果（2026-03-11）：
+
+- `.venv/bin/ruff check src/cryptoquant/risk/manager.py tests/test_risk_manager.py` ✅
+- `.venv/bin/pytest -q tests/test_risk_manager.py` ✅
+- `.venv/bin/pytest -q` ⚠️ 未通過（baseline 既有問題，非本次修改引入）：
+  - `tests/test_backtest_data_sources.py`：`ImportError: cannot import name 'CSVDataSourceConfig' from 'cryptoquant.backtest'`
+  - `tests/test_backtest_indicators.py`：`ImportError: cannot import name 'atr' from 'cryptoquant.backtest'`
+
+---
 ## MVP-8：實時交易集成與高級風控 / 訂單簿深度與微觀結構分析（2026-03-11）
 
 1. 新增訂單簿微觀結構分析模組
