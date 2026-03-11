@@ -9,9 +9,16 @@ from cryptoquant.market.microstructure import (
 )
 
 
-def _snapshot(*, bid_px: float, bid_sz: float, ask_px: float, ask_sz: float) -> OrderBookSnapshot:
+def _snapshot(
+    *,
+    bid_px: float,
+    bid_sz: float,
+    ask_px: float,
+    ask_sz: float,
+    symbol: str = "BTCUSDT",
+) -> OrderBookSnapshot:
     return OrderBookSnapshot(
-        symbol="BTCUSDT",
+        symbol=symbol,
         ts=datetime(2026, 3, 11, 8, 0, tzinfo=timezone.utc),
         bids=(
             OrderBookLevel(price=bid_px, size=bid_sz),
@@ -63,6 +70,40 @@ def test_ofi_changes_with_top_of_book_update() -> None:
     assert m1.order_flow_imbalance == 0.0
     # bid strengthens (size up), ask thins (size down) => positive OFI
     assert m2.order_flow_imbalance > 0.0
+
+
+def test_ofi_state_isolated_by_symbol() -> None:
+    analyzer = OrderBookMicrostructureAnalyzer()
+
+    btc_first = _snapshot(
+        symbol="BTCUSDT",
+        bid_px=100.0,
+        bid_sz=2.0,
+        ask_px=101.0,
+        ask_sz=2.0,
+    )
+    btc_second = _snapshot(
+        symbol="BTCUSDT",
+        bid_px=100.0,
+        bid_sz=5.0,
+        ask_px=101.0,
+        ask_sz=1.0,
+    )
+    eth_first = _snapshot(
+        symbol="ETHUSDT",
+        bid_px=200.0,
+        bid_sz=3.0,
+        ask_px=201.0,
+        ask_sz=4.0,
+    )
+
+    analyzer.analyze(btc_first)
+    btc_second_metrics = analyzer.analyze(btc_second)
+    eth_first_metrics = analyzer.analyze(eth_first)
+
+    assert btc_second_metrics.order_flow_imbalance > 0.0
+    # First snapshot for another symbol must not inherit BTC previous top-of-book state.
+    assert eth_first_metrics.order_flow_imbalance == 0.0
 
 
 def test_invalid_depth_levels_raise() -> None:

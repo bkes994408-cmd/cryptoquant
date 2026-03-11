@@ -50,7 +50,7 @@ class OrderBookMicrostructureAnalyzer:
     """
 
     def __init__(self) -> None:
-        self._prev_top: tuple[float, float, float, float] | None = None
+        self._prev_top_by_symbol: dict[str, tuple[float, float, float, float]] = {}
 
     def analyze(
         self,
@@ -72,8 +72,8 @@ class OrderBookMicrostructureAnalyzer:
         mid = (best_bid + best_ask) / 2.0
         spread_bps = (spread / mid * 10_000.0) if mid > 0 else 0.0
 
-        bid_depth = sum(max(l.size, 0.0) for l in bids)
-        ask_depth = sum(max(l.size, 0.0) for l in asks)
+        bid_depth = sum(max(level.size, 0.0) for level in bids)
+        ask_depth = sum(max(level.size, 0.0) for level in asks)
         total_depth = bid_depth + ask_depth
         depth_imbalance = (
             (bid_depth - ask_depth) / total_depth if total_depth > 0 else 0.0
@@ -91,8 +91,19 @@ class OrderBookMicrostructureAnalyzer:
             else mid
         )
 
-        ofi = self._compute_ofi(best_bid, top_bid_size, best_ask, top_ask_size)
-        self._prev_top = (best_bid, top_bid_size, best_ask, top_ask_size)
+        ofi = self._compute_ofi(
+            snapshot.symbol,
+            best_bid,
+            top_bid_size,
+            best_ask,
+            top_ask_size,
+        )
+        self._prev_top_by_symbol[snapshot.symbol] = (
+            best_bid,
+            top_bid_size,
+            best_ask,
+            top_ask_size,
+        )
 
         return MicrostructureMetrics(
             symbol=snapshot.symbol,
@@ -114,15 +125,17 @@ class OrderBookMicrostructureAnalyzer:
 
     def _compute_ofi(
         self,
+        symbol: str,
         bid_px: float,
         bid_sz: float,
         ask_px: float,
         ask_sz: float,
     ) -> float:
-        if self._prev_top is None:
+        prev_top = self._prev_top_by_symbol.get(symbol)
+        if prev_top is None:
             return 0.0
 
-        prev_bid_px, prev_bid_sz, prev_ask_px, prev_ask_sz = self._prev_top
+        prev_bid_px, prev_bid_sz, prev_ask_px, prev_ask_sz = prev_top
 
         bid_component = (
             (1.0 if bid_px >= prev_bid_px else 0.0) * bid_sz

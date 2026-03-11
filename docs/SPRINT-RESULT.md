@@ -30,10 +30,13 @@
 4. 文件更新
    - 更新 `docs/ROADMAP.md`：勾選 `MVP-8` 子項 `訂單簿深度與微觀結構分析`
 
-驗證結果：
+驗證結果（2026-03-11 重新驗證）：
 
-- `pytest -q tests/test_orderbook_microstructure.py` ✅
-- `pytest -q` ✅
+- `.venv/bin/ruff check src/cryptoquant/market/microstructure.py tests/test_orderbook_microstructure.py` ✅
+- `.venv/bin/pytest -q tests/test_orderbook_microstructure.py` ✅（5 passed）
+- `.venv/bin/pytest -q` ⚠️ 未通過（baseline 既有問題，非本次修改引入）：
+  - `tests/test_backtest_data_sources.py`：`ImportError: cannot import name 'CSVDataSourceConfig' from 'cryptoquant.backtest'`
+  - `tests/test_backtest_indicators.py`：`ImportError: cannot import name 'atr' from 'cryptoquant.backtest'`
 
 ---
 
