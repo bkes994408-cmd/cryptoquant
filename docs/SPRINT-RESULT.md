@@ -1,5 +1,39 @@
 # Sprint Result
 
+## MVP-8：實時交易集成與高級風控 / 策略參數動態調整與強化學習應用（2026-03-11）
+
+1. 新增策略參數動態調整模組（bandit-based RL）
+   - 新增 `src/cryptoquant/strategy/adaptive.py`
+   - 提供：
+     - `AdaptationSignal`（市場情境訊號：volatility / trend_strength）
+     - `BanditState`（每組參數在特定 regime 的 pulls / avg_reward）
+     - `RegimeBanditParameterTuner`（epsilon-greedy contextual bandit）
+   - 行為重點：
+     - 依市場 regime（low/high vol × trend/range）獨立學習最適參數
+     - 支援線上回饋更新（`update`）與即時選參（`select`）
+     - 可輸出快照（`snapshot`）供監控或持久化
+
+2. API 導出
+   - 更新 `src/cryptoquant/strategy/__init__.py`
+   - 導出 `AdaptationSignal` / `BanditState` / `RegimeBanditParameterTuner`
+
+3. 測試補齊
+   - 新增 `tests/test_strategy_adaptive.py`
+   - 覆蓋：
+     - 同 regime 下，bandit 會偏好歷史 reward 較高參數
+     - 不同 regime 之間學習表獨立（避免跨市況污染）
+     - 邊界與輸入驗證（epsilon、重複參數、負 volatility）
+
+4. 文件更新
+   - 更新 `docs/ROADMAP.md`：勾選 `MVP-8` 子項 `策略參數動態調整與強化學習應用`
+
+驗證結果（2026-03-11）：
+
+- `.venv/bin/ruff check src/cryptoquant/strategy/adaptive.py tests/test_strategy_adaptive.py` ✅
+- `.venv/bin/pytest -q tests/test_strategy_adaptive.py tests/test_strategy_optimizer.py` ✅
+
+---
+
 ## MVP-8：實時交易集成與高級風控 / 訂單簿深度與微觀結構分析（2026-03-11）
 
 1. 新增訂單簿微觀結構分析模組
