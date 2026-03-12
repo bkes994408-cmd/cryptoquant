@@ -26,7 +26,8 @@
 
 驗證結果（2026-03-12）：
 
-- `.venv/bin/python -m pytest -q tests/test_strategy_optimizer.py tests/test_strategy_adaptive.py tests/test_strategy_engine.py` ✅（13 passed）
+- `.venv/bin/python -m pytest -q tests/test_strategy_optimizer.py`
+  `tests/test_strategy_adaptive.py tests/test_strategy_engine.py` ✅（13 passed）
 - `.venv/bin/python -m pytest -q` ✅（148 passed）
 
 ---
