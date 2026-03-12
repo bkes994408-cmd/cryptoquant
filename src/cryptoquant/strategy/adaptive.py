@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import random
 from dataclasses import dataclass
 from typing import Sequence
 
@@ -31,24 +32,19 @@ class EpsilonGreedyParameterBandit:
 
         self._candidates = list(candidates)
         self._epsilon = epsilon
-        self._pull_count = 0
         self._reward_sum: dict[StrategyParameterSet, float] = {c: 0.0 for c in self._candidates}
         self._reward_count: dict[StrategyParameterSet, int] = {c: 0 for c in self._candidates}
 
     def select(self) -> StrategyParameterSet:
-        self._pull_count += 1
-        if self._epsilon > 0 and self._pull_count % max(1, int(1 / self._epsilon)) == 0:
-            idx = (self._pull_count // max(1, int(1 / self._epsilon))) % len(self._candidates)
-            return self._candidates[idx]
+        # Explore stochastically with probability epsilon.
+        if random.random() < self._epsilon:
+            return random.choice(self._candidates)
 
-        best = self._candidates[0]
-        best_mean = self.mean_reward(best)
-        for candidate in self._candidates[1:]:
-            candidate_mean = self.mean_reward(candidate)
-            if candidate_mean > best_mean:
-                best = candidate
-                best_mean = candidate_mean
-        return best
+        # Exploit the highest mean reward; random tie-break among equals.
+        means = {candidate: self.mean_reward(candidate) for candidate in self._candidates}
+        best_mean = max(means.values())
+        top_candidates = [candidate for candidate, mean in means.items() if mean == best_mean]
+        return random.choice(top_candidates)
 
     def update(self, params: StrategyParameterSet, reward: float) -> None:
         if params not in self._reward_sum:
@@ -100,6 +96,7 @@ class AdaptiveParameterController:
         self._bandit = EpsilonGreedyParameterBandit(self._candidates, epsilon=cfg.epsilon)
         self._events_seen = 0
         self._last_selected = self._candidates[0]
+        self._last_optimization: StrategyOptimizationResult | None = None
 
     def step(self, history: Sequence[MarketEvent]) -> AdaptiveDecision:
         if len(history) < self._config.lookback_events:
@@ -109,7 +106,13 @@ class AdaptiveParameterController:
         should_retune = self._events_seen == 1 or self._events_seen % self._config.retune_interval_events == 0
 
         window = history[-self._config.lookback_events :]
-        optimization = self._optimizer.optimize(window, param_grid=self._candidates)
+
+        if should_retune or self._last_optimization is None:
+            optimization = self._optimizer.optimize(window, param_grid=self._candidates)
+            self._last_optimization = optimization
+        else:
+            # Hold mode: reuse cached optimization to avoid re-running full optimization each event.
+            optimization = self._last_optimization
 
         if should_retune:
             params = self._bandit.select()

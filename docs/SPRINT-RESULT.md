@@ -1,40 +1,5 @@
 # Sprint Result
 
-## MVP-8：實時交易集成與高級風控 / 策略參數動態調整與強化學習應用（2026-03-12）
-
-1. 新增策略參數動態調整模組
-   - 新增 `src/cryptoquant/strategy/adaptive.py`
-   - 提供：
-     - `AdaptiveParameterController`：rolling lookback + periodic retune
-     - `EpsilonGreedyParameterBandit`：epsilon-greedy bandit（RL 應用）
-     - `AdaptiveStrategyConfig` / `AdaptiveDecision`
-   - 將既有 `AutomatedStrategyOptimizer` 與線上 bandit 獎勵更新整合，支持「探索/利用」式參數調整
-
-2. API 導出
-   - 更新 `src/cryptoquant/strategy/__init__.py`
-   - 更新 `src/cryptoquant/__init__.py`
-   - 導出 adaptive 相關 API 供策略引擎與 runtime 接線
-
-3. 測試補齊
-   - 新增 `tests/test_strategy_adaptive.py`
-   - 覆蓋：
-     - bandit 在 `epsilon=0` 下偏好高均值 reward 參數
-     - controller `retune -> hold -> retune` 節奏行為
-     - lookback 歷史不足時的防呆
-
-4. 文件更新
-   - 更新 `docs/ROADMAP.md`：勾選 `MVP-8` 子項 `策略參數動態調整與強化學習應用`
-
-驗證結果（2026-03-12）：
-
-- `.venv/bin/ruff check src/cryptoquant/strategy/adaptive.py tests/test_strategy_adaptive.py` ✅
-- `.venv/bin/pytest -q tests/test_strategy_optimizer.py tests/test_strategy_adaptive.py` ✅
-- `.venv/bin/pytest -q` ⚠️ 未通過（baseline 既有問題，非本次修改引入）：
-  - `tests/test_backtest_data_sources.py`：`ImportError: cannot import name 'CSVDataSourceConfig' from 'cryptoquant.backtest'`
-  - `tests/test_backtest_indicators.py`：`ImportError: cannot import name 'atr' from 'cryptoquant.backtest'`
-
----
-
 ## MVP-8：實時交易集成與高級風控 / 實時風控預警與動態停損機制（2026-03-11）
 
 1. 風控模組能力補強（realtime alert + dynamic stop）
