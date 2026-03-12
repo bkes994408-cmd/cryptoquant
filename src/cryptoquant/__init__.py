@@ -7,7 +7,15 @@ from .aggregation import Bar, BarAggregator
 from .events.market import MarketEvent
 from .events.bus import EventBus
 from .market import BinanceKlineWSClient
-from .strategy import StrategyDecision, StrategyEngine, MovingAverageCrossoverStrategy
+from .strategy import (
+    AdaptiveDecision,
+    AdaptiveParameterController,
+    AdaptiveStrategyConfig,
+    EpsilonGreedyParameterBandit,
+    MovingAverageCrossoverStrategy,
+    StrategyDecision,
+    StrategyEngine,
+)
 from .risk import KillSwitch, RiskInput, RiskLimits, RiskManager, RiskResult, RiskStatus
 from .oms import OMS, Order, OrderStatus
 from .execution import (
@@ -44,6 +52,10 @@ __all__ = [
     "StrategyDecision",
     "StrategyEngine",
     "MovingAverageCrossoverStrategy",
+    "AdaptiveDecision",
+    "AdaptiveStrategyConfig",
+    "AdaptiveParameterController",
+    "EpsilonGreedyParameterBandit",
     "RiskInput",
     "RiskLimits",
     "RiskManager",
