@@ -1,36 +1,38 @@
 # Sprint Result
 
-## MVP-8：實時交易集成與高級風控 / 策略參數動態調整與強化學習應用（2026-03-11）
+## MVP-8：實時交易集成與高級風控 / 實時風控預警與動態停損機制（2026-03-11）
 
-1. 新增策略參數動態調整模組（bandit-based RL）
-   - 新增 `src/cryptoquant/strategy/adaptive.py`
-   - 提供：
-     - `AdaptationSignal`（市場情境訊號：volatility / trend_strength）
-     - `BanditState`（每組參數在特定 regime 的 pulls / avg_reward）
-     - `RegimeBanditParameterTuner`（epsilon-greedy contextual bandit）
-   - 行為重點：
-     - 依市場 regime（low/high vol × trend/range）獨立學習最適參數
-     - 支援線上回饋更新（`update`）與即時選參（`select`）
-     - 可輸出快照（`snapshot`）供監控或持久化
+1. 風控模組能力補強（realtime alert + dynamic stop）
+   - 更新 `src/cryptoquant/risk/manager.py`
+   - 新增 `RiskStatus` 狀態快照
+     （daily stop / dynamic stop / side / extreme / stop price）
+   - 動態停損強制平倉告警去重：在條件持續期間只發一次 `risk.dynamic_stop.enforced`，降低告警噪音
 
 2. API 導出
-   - 更新 `src/cryptoquant/strategy/__init__.py`
-   - 導出 `AdaptationSignal` / `BanditState` / `RegimeBanditParameterTuner`
+   - 更新 `src/cryptoquant/risk/__init__.py`、`src/cryptoquant/__init__.py`
+   - 導出 `RiskStatus`
 
 3. 測試補齊
-   - 新增 `tests/test_strategy_adaptive.py`
+   - 更新 `tests/test_risk_manager.py`
    - 覆蓋：
-     - 同 regime 下，bandit 會偏好歷史 reward 較高參數
-     - 不同 regime 之間學習表獨立（避免跨市況污染）
-     - 邊界與輸入驗證（epsilon、重複參數、負 volatility）
+     - dynamic stop enforced 告警去重與重置行為
+     - `RiskManager.status()` 動態停損價格回報正確性
 
 4. 文件更新
-   - 更新 `docs/ROADMAP.md`：勾選 `MVP-8` 子項 `策略參數動態調整與強化學習應用`
+   - 更新 `docs/ROADMAP.md`：勾選 `MVP-8` 子項 `實時風控預警與動態停損機制`
 
 驗證結果（2026-03-11）：
 
-- `.venv/bin/ruff check src/cryptoquant/strategy/adaptive.py tests/test_strategy_adaptive.py` ✅
-- `.venv/bin/pytest -q tests/test_strategy_adaptive.py tests/test_strategy_optimizer.py` ✅
+- `.venv/bin/ruff check src/cryptoquant/risk/manager.py`
+  `tests/test_risk_manager.py` ✅
+- `.venv/bin/pytest -q tests/test_risk_manager.py` ✅
+- `.venv/bin/pytest -q` ⚠️ 未通過（baseline 既有問題，非本次修改引入）：
+  - `tests/test_backtest_data_sources.py`：
+    `ImportError: cannot import name 'CSVDataSourceConfig'`
+    `from 'cryptoquant.backtest'`
+  - `tests/test_backtest_indicators.py`：
+    `ImportError: cannot import name 'atr'`
+    `from 'cryptoquant.backtest'`
 
 ---
 
@@ -66,11 +68,16 @@
 
 驗證結果（2026-03-11 重新驗證）：
 
-- `.venv/bin/ruff check src/cryptoquant/market/microstructure.py tests/test_orderbook_microstructure.py` ✅
+- `.venv/bin/ruff check src/cryptoquant/market/microstructure.py`
+  `tests/test_orderbook_microstructure.py` ✅
 - `.venv/bin/pytest -q tests/test_orderbook_microstructure.py` ✅（5 passed）
 - `.venv/bin/pytest -q` ⚠️ 未通過（baseline 既有問題，非本次修改引入）：
-  - `tests/test_backtest_data_sources.py`：`ImportError: cannot import name 'CSVDataSourceConfig' from 'cryptoquant.backtest'`
-  - `tests/test_backtest_indicators.py`：`ImportError: cannot import name 'atr' from 'cryptoquant.backtest'`
+  - `tests/test_backtest_data_sources.py`：
+    `ImportError: cannot import name 'CSVDataSourceConfig'`
+    `from 'cryptoquant.backtest'`
+  - `tests/test_backtest_indicators.py`：
+    `ImportError: cannot import name 'atr'`
+    `from 'cryptoquant.backtest'`
 
 ---
 
@@ -80,7 +87,8 @@
    - 新增 `src/cryptoquant/backtest/robustness.py`
    - 提供 `run_walk_forward_validation(...)`：
      以 rolling train/test window 做 walk-forward 驗證
-   - 提供 `run_regime_split_validation(...)`：依報酬率閾值拆分 bull / sideways / bear regime
+   - 提供 `run_regime_split_validation(...)`：
+     依報酬率閾值拆分 bull / sideways / bear regime
    - 提供 `evaluate_strategy_metrics(...)`：輸出交易次數、turnover、PnL、報酬率、win rate
 
 2. 新增可直接執行的驗證腳本
@@ -167,7 +175,8 @@
    - 擴充 `src/cryptoquant/events/bus.py`，新增 `LowLatencyEventBus`
    - 透過 bounded queue + worker threads + micro-batch dispatch 提升 burst 吞吐
    - 支援 `drop_on_full` 背壓策略，避免高峰時 publisher 阻塞
-   - 新增 `DispatchStats`，可觀測 published/dropped/dispatched 與平均 dispatch latency（微秒）
+   - 新增 `DispatchStats`，可觀測 published/dropped/dispatched
+     與平均 dispatch latency（微秒）
 
 2. API 導出
    - 更新 `src/cryptoquant/events/__init__.py`
@@ -306,8 +315,10 @@
 
 3. 翻轉拆單（reduceOnly close→open）流程：先補測試框架 + TODO
    - 更新 `tests/test_backtest_replay.py`
-   - 新增 `xfail` 測試 `test_event_replayer_flip_should_split_reduce_only_close_then_open`
-   - 現況：`EventReplayer` 仍以單筆 delta 下單，尚未實作拆單；測試已鎖定預期行為供後續實作
+   - 新增 `xfail` 測試
+     `test_event_replayer_flip_should_split_reduce_only_close_then_open`
+   - 現況：`EventReplayer` 仍以單筆 delta 下單，尚未實作拆單；
+     測試已鎖定預期行為供後續實作
 
 驗證結果：`pytest -q`（本輪）應為全綠 + 1 xfailed（翻轉拆單待實作）
 
@@ -317,13 +328,16 @@
 
 1. 新增大樣本回放資源治理模組
    - 新增 `src/cryptoquant/backtest/replay_resource_governance.py`
-   - 提供 `run_large_sample_replay_governance(...)`，回傳記憶體追蹤與 queue 壓力觀測報告
-   - 報告欄位包含 `peak_memory_kb`、`queue_high_watermark`、`max_queue_utilization`、`backpressure_count`
+   - 提供 `run_large_sample_replay_governance(...)`，
+     回傳記憶體追蹤與 queue 壓力觀測報告
+   - 報告欄位包含 `peak_memory_kb`、`queue_high_watermark`、
+     `max_queue_utilization`、`backpressure_count`
 
 2. 擴充事件匯流排可觀測性
    - 擴充 `src/cryptoquant/events/bus.py`：
      `LowLatencyEventBus` 新增 queue 水位與 backpressure 計數
-   - `DispatchStats` 新增 `queue_capacity`、`queue_high_watermark`、`backpressure_count`
+   - `DispatchStats` 新增 `queue_capacity`、
+     `queue_high_watermark`、`backpressure_count`
 
 3. 壓測輸出補齊資源治理指標
    - 新增/更新 `src/cryptoquant/backtest/event_bus_benchmark.py`
