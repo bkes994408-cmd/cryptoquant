@@ -1,6 +1,7 @@
 # cryptoquant
 
-MVP-driven quantitative trading scaffold（事件驅動 + 可測試 execution/risk/strategy 模組）。
+MVP-driven quantitative trading scaffold
+（事件驅動 + 可測試 execution/risk/strategy 模組）。
 
 ## MVP-8：交易所 API 集成與高級風控（目前完成範圍）
 
@@ -14,16 +15,30 @@ MVP-driven quantitative trading scaffold（事件驅動 + 可測試 execution/ri
   - 每帳戶獨立 idempotency（`account_id + client_order_id`）
   - `KillSwitch` 防護
   - 下單前風險檢查（含 `qty != 0`）
-  - 帳戶集合一致性驗證（`oms_by_account` 必須與 gateway 帳戶集合一致）
+  - 帳戶集合一致性驗證
+    （`oms_by_account` 必須與 gateway 帳戶集合一致）
 
-> 非本次範圍：完整資產同步、WebSocket user stream、資金費率與保證金管理、跨交易所抽象。
+> 非本次範圍：完整資產同步、WebSocket user stream、
+> 資金費率與保證金管理、跨交易所抽象。
 
 1. **訂單簿深度與微觀結構分析**：
 
-- `OrderBookMicrostructureAnalyzer`：對 order book snapshot 產生可用於策略/風控的即時指標。
+- `OrderBookMicrostructureAnalyzer`：
+  對 order book snapshot 產生可用於策略/風控的即時指標。
 - 內建指標：`spread`、`spread_bps`、`mid_price`、`micro_price`、
   `depth_imbalance`、`order_flow_imbalance`。
 - 可指定 `depth_levels`，統計前 N 檔深度與 side VWAP。
+
+1. **合規性與審計支持**：
+
+- `RuleBasedComplianceChecker`：
+  下單前檢查 account allowlist / blocked symbols / max abs qty。
+- `AuditTrail`：
+  提供 hash-chain 的防竄改稽核事件紀錄，
+  並預設對 payload 做 secrets redaction。
+- `MultiAccountLiveExecutor`
+  支援注入 `compliance_checker` 與 `audit_trail`，
+  可對拒單與成功下單建立可驗證 audit log。
 
 ## 最小可用範例
 
@@ -71,26 +86,32 @@ print(ack.exchange_order_id, ack.ack_ts_ms)
 
 ## 風控語義：Dynamic Stop（Trailing）
 
-`RiskManager` 在 `dynamic_stop` 啟用時，會根據目前持倉方向追蹤「有利極值」：
+`RiskManager` 在 `dynamic_stop` 啟用時，
+會根據目前持倉方向追蹤「有利極值」：
 
 - `LONG`：追蹤最高價，stop = `extreme * (1 - trailing_pct)`
 - `SHORT`：追蹤最低價，stop = `extreme * (1 + trailing_pct)`
 
-當價格觸發 stop 後，`dynamic_stop_triggered=True`，且當前決策會**強制把同向維持/加碼目標壓成 0（flatten）**。
+當價格觸發 stop 後，`dynamic_stop_triggered=True`，
+且當前決策會**強制把同向維持/加碼目標壓成 0（flatten）**。
 
 ### 觸發後的翻向開倉策略（避免歧義）
 
 Dynamic stop 觸發後，系統策略是：
 
 - ✅ **允許風險降低/平倉**（同向減倉、到 0）
-- ✅ **允許翻向開倉**（例如 LONG 停損後可直接開 SHORT，或反之）
-- ❌ **不允許同向維持或加碼**（直到倉位狀態更新為可追蹤的新 side）
+- ✅ **允許翻向開倉**
+  （例如 LONG 停損後可直接開 SHORT，或反之）
+- ❌ **不允許同向維持或加碼**
+  （直到倉位狀態更新為可追蹤的新 side）
 
-也就是說，dynamic stop 的目標是「阻止原方向風險延續」，不是凍結所有交易行為。
+也就是說，dynamic stop 的目標是「阻止原方向風險延續」，
+不是凍結所有交易行為。
 
 ## Adaptive tuner（策略參數動態調整 + RL bandit）
 
-可使用 `AdaptiveParameterController` 依固定 cadence 做重調（retune），
+可使用 `AdaptiveParameterController`
+依固定 cadence 做重調（retune），
 並在候選參數中透過 epsilon-greedy bandit 進行探索/利用。
 
 ```python
@@ -121,10 +142,14 @@ print(decision.mode, decision.selected_params)
 
 限制與注意事項：
 
-- `lookback_events` 必須 `>= 20`，且 `history` 長度不足時會拋出例外。
-- `retune_interval_events` 必須 `>= 1`；非 retune 事件會重用前次最佳化結果（避免每筆都重跑 optimizer）。
+- `lookback_events` 必須 `>= 20`，
+  且 `history` 長度不足時會拋出例外。
+- `retune_interval_events` 必須 `>= 1`；
+  非 retune 事件會重用前次最佳化結果
+  （避免每筆都重跑 optimizer）。
 - `epsilon` 範圍必須在 `[0, 1]`。`epsilon=1` 為全探索。
-- bandit 在 exploit 階段若平均 reward 同分，會做隨機 tie-break，不固定取第一個候選。
+- bandit 在 exploit 階段若平均 reward 同分，
+  會做隨機 tie-break，不固定取第一個候選。
 - reward 更新值必須是有限數值（finite number）。
 
 ## 開發

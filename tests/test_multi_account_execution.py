@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 
+from cryptoquant.compliance import AuditTrail, ComplianceRuleSet, RuleBasedComplianceChecker
 from cryptoquant.execution import (
     ExchangeAccountConfig,
     MultiAccountBinanceGateway,
@@ -196,3 +197,52 @@ def test_multi_account_live_executor_rejects_conflict_same_id_different_payload(
         executor.execute_market(MultiAccountOrderRequest("acct-a", "cid-1", "ETHUSDT", 1.0))
 
     assert len(transport.calls) == 1
+
+
+def test_multi_account_live_executor_blocks_non_compliant_order() -> None:
+    gateway = MultiAccountBinanceGateway(
+        [ExchangeAccountConfig("acct-a", "binance", "k", "s", base_url="https://example.com")],
+        transport=SequenceTransport([{"orderId": 1, "updateTime": 1_700_000_000_000}]),
+    )
+    checker = RuleBasedComplianceChecker(
+        ComplianceRuleSet(blocked_symbols=frozenset({"BTCUSDT"}))
+    )
+    trail = AuditTrail(now_ms_fn=lambda: 1_700_000_000_000)
+    executor = MultiAccountLiveExecutor(
+        oms_by_account={"acct-a": OMS()},
+        gateway=gateway,
+        compliance_checker=checker,
+        audit_trail=trail,
+    )
+
+    with pytest.raises(ValueError, match="compliance violation"):
+        executor.execute_market(MultiAccountOrderRequest("acct-a", "cid-1", "BTCUSDT", 1.0))
+
+    assert len(trail.events) == 1
+    assert trail.events[0].event_type == "compliance.order_blocked"
+
+
+def test_multi_account_live_executor_writes_audit_events_for_success_and_idempotent_return() -> None:
+    transport = SequenceTransport([{"orderId": 1, "updateTime": 1_700_000_000_000}])
+    gateway = MultiAccountBinanceGateway(
+        [ExchangeAccountConfig("acct-a", "binance", "k", "s", base_url="https://example.com")],
+        transport=transport,
+    )
+    trail = AuditTrail(now_ms_fn=lambda: 1_700_000_000_000)
+    executor = MultiAccountLiveExecutor(
+        oms_by_account={"acct-a": OMS()},
+        gateway=gateway,
+        audit_trail=trail,
+    )
+
+    req = MultiAccountOrderRequest("acct-a", "cid-1", "BTCUSDT", 1.0)
+    executor.execute_market(req)
+    executor.execute_market(req)
+
+    event_types = [event.event_type for event in trail.events]
+    assert event_types == [
+        "execution.order_submitted",
+        "execution.order_acknowledged",
+        "execution.idempotent_return",
+    ]
+    assert trail.verify_chain() is True
