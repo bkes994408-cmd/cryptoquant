@@ -55,7 +55,7 @@ def test_bandit_prefers_higher_mean_reward_when_epsilon_zero(monkeypatch: pytest
     bandit.update(p2, 2.0)
 
     # Force deterministic tie/exploit selection path for test stability.
-    monkeypatch.setattr("random.choice", lambda seq: seq[-1])
+    monkeypatch.setattr(bandit._rng, "choice", lambda seq: seq[-1])
     assert bandit.select() == p2
 
 
@@ -72,8 +72,8 @@ def test_bandit_epsilon_one_always_explores(monkeypatch: pytest.MonkeyPatch) -> 
     p2 = StrategyParameterSet(fast_window=3, slow_window=8)
     bandit = EpsilonGreedyParameterBandit([p1, p2], epsilon=1.0)
 
-    monkeypatch.setattr("random.random", lambda: 0.999)
-    monkeypatch.setattr("random.choice", lambda seq: seq[1])
+    monkeypatch.setattr(bandit._rng, "random", lambda: 0.999)
+    monkeypatch.setattr(bandit._rng, "choice", lambda seq: seq[1])
 
     assert bandit.select() == p2
 
@@ -87,7 +87,7 @@ def test_bandit_exploit_tie_break_is_not_stuck_on_first_candidate(monkeypatch: p
     bandit.update(p1, 1.0)
     bandit.update(p2, 1.0)
 
-    monkeypatch.setattr("random.choice", lambda seq: seq[-1])
+    monkeypatch.setattr(bandit._rng, "choice", lambda seq: seq[-1])
     assert bandit.select() == p2
 
 

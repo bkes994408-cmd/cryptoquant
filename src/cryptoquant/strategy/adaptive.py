@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import random
+from random import SystemRandom
 from dataclasses import dataclass
 from typing import Sequence
 
@@ -34,17 +34,18 @@ class EpsilonGreedyParameterBandit:
         self._epsilon = epsilon
         self._reward_sum: dict[StrategyParameterSet, float] = {c: 0.0 for c in self._candidates}
         self._reward_count: dict[StrategyParameterSet, int] = {c: 0 for c in self._candidates}
+        self._rng = SystemRandom()
 
     def select(self) -> StrategyParameterSet:
         # Explore stochastically with probability epsilon.
-        if random.random() < self._epsilon:
-            return random.choice(self._candidates)
+        if self._rng.random() < self._epsilon:
+            return self._rng.choice(self._candidates)
 
         # Exploit the highest mean reward; random tie-break among equals.
         means = {candidate: self.mean_reward(candidate) for candidate in self._candidates}
         best_mean = max(means.values())
         top_candidates = [candidate for candidate, mean in means.items() if mean == best_mean]
-        return random.choice(top_candidates)
+        return self._rng.choice(top_candidates)
 
     def update(self, params: StrategyParameterSet, reward: float) -> None:
         if params not in self._reward_sum:
