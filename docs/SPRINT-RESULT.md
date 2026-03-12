@@ -387,3 +387,36 @@
 驗證結果：
 
 - `./venv_ci_cryptoquant/bin/pytest -q` ✅
+
+## MVP-8：實時交易集成與高級風控 / 高可用性與災難恢復（2026-03-12）
+
+1. 新增高可用性故障切換決策模組
+   - 新增 `src/cryptoquant/ops/high_availability.py`
+   - 提供 `evaluate_failover(...)`：
+     - primary 不可達或 heartbeat 過期時，才進入 failover 評估
+     - standby 候選需同時滿足 reachable / heartbeat 門檻 / replication lag 門檻
+     - 以 `lag` + `heartbeat_age` 排序，選擇最佳升主節點
+
+2. 新增災難恢復計畫產生器
+   - 同檔新增 `plan_disaster_recovery(...)`
+   - 依 `generation`、`checkpoint_ts_ms`、`instance_id` 穩定排序選出恢復來源 snapshot
+   - 回傳 `RecoveryPlan`（來源節點、目標節點、是否需 replay）
+
+3. 新增 ops 模組導出
+   - 新增 `src/cryptoquant/ops/__init__.py`
+
+4. 測試補齊
+   - 新增 `tests/test_high_availability.py`
+   - 覆蓋情境：
+     - primary 當機時從健康 standby 升主
+     - 無可用 standby 時避免誤切換
+     - DR snapshot 依世代與時間戳正確挑選
+     - 無 snapshot 時拋出明確錯誤
+
+5. Roadmap 更新
+   - `docs/ROADMAP.md` 勾選：`高可用性與災難恢復`
+
+驗證結果：
+
+- `pytest -q tests/test_high_availability.py` ✅
+- `pytest -q` ✅
