@@ -1,3 +1,9 @@
+from .adaptive import (
+    AdaptiveDecision,
+    AdaptiveParameterController,
+    AdaptiveStrategyConfig,
+    EpsilonGreedyParameterBandit,
+)
 from .engine import StrategyDecision, StrategyEngine
 from .ma_crossover import MovingAverageCrossoverStrategy
 from .optimizer import AutomatedStrategyOptimizer, StrategyEvaluation, StrategyOptimizationResult, StrategyParameterSet
@@ -10,4 +16,8 @@ __all__ = [
     "StrategyEvaluation",
     "StrategyParameterSet",
     "StrategyOptimizationResult",
+    "AdaptiveDecision",
+    "AdaptiveStrategyConfig",
+    "AdaptiveParameterController",
+    "EpsilonGreedyParameterBandit",
 ]
