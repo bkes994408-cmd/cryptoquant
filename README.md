@@ -25,6 +25,12 @@ MVP-driven quantitative trading scaffold（事件驅動 + 可測試 execution/ri
   `depth_imbalance`、`order_flow_imbalance`。
 - 可指定 `depth_levels`，統計前 N 檔深度與 side VWAP。
 
+1. **合規性與審計支持**：
+
+- `RuleBasedComplianceChecker`：下單前檢查 account allowlist / blocked symbols / max abs qty。
+- `AuditTrail`：提供 hash-chain 的防竄改稽核事件紀錄，並預設對 payload 做 secrets redaction。
+- `MultiAccountLiveExecutor` 支援注入 `compliance_checker` 與 `audit_trail`，可對拒單與成功下單建立可驗證 audit log。
+
 ## 最小可用範例
 
 ```python

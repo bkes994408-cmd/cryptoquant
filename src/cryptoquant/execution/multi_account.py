@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable, Mapping
 
+from cryptoquant.compliance import AuditTrail, OrderComplianceChecker
 from cryptoquant.oms import OMS, OrderStatus
 from cryptoquant.risk import KillSwitch
 
@@ -85,6 +86,8 @@ class MultiAccountLiveExecutor:
         gateway: MultiAccountBinanceGateway,
         *,
         kill_switch: KillSwitch | None = None,
+        compliance_checker: OrderComplianceChecker | None = None,
+        audit_trail: AuditTrail | None = None,
     ) -> None:
         if not oms_by_account:
             raise ValueError("oms_by_account must not be empty")
@@ -102,6 +105,8 @@ class MultiAccountLiveExecutor:
         self._oms_by_account = dict(oms_by_account)
         self._gateway = gateway
         self._kill_switch = kill_switch
+        self._compliance_checker = compliance_checker
+        self._audit_trail = audit_trail
         self._acks: dict[tuple[str, str], LiveOrderAck] = {}
         self._request_fingerprint_by_key: dict[tuple[str, str], tuple[str, float]] = {}
 
@@ -118,7 +123,36 @@ class MultiAccountLiveExecutor:
         if cached is not None:
             if cached_fingerprint != req_fingerprint:
                 raise ValueError("conflicting payload for existing account_id + client_order_id")
+            self._audit(
+                event_type="execution.idempotent_return",
+                payload={
+                    "account_id": req.account_id,
+                    "client_order_id": req.client_order_id,
+                    "symbol": req.symbol,
+                    "qty": req.qty,
+                },
+            )
             return cached
+
+        if self._compliance_checker is not None:
+            decision = self._compliance_checker.check_order(
+                account_id=req.account_id,
+                symbol=req.symbol,
+                qty=req.qty,
+            )
+            if not decision.allowed:
+                self._audit(
+                    event_type="compliance.order_blocked",
+                    payload={
+                        "account_id": req.account_id,
+                        "client_order_id": req.client_order_id,
+                        "symbol": req.symbol,
+                        "qty": req.qty,
+                        "reasons": list(decision.reasons),
+                    },
+                )
+                reasons = "; ".join(decision.reasons)
+                raise ValueError(f"compliance violation: {reasons}")
 
         oms = self._oms_by_account.get(req.account_id)
         if oms is None:
@@ -129,6 +163,15 @@ class MultiAccountLiveExecutor:
         if order.status != OrderStatus.NEW:
             raise ValueError(f"cannot send live order in status={order.status}")
 
+        self._audit(
+            event_type="execution.order_submitted",
+            payload={
+                "account_id": req.account_id,
+                "client_order_id": req.client_order_id,
+                "symbol": req.symbol,
+                "qty": req.qty,
+            },
+        )
         ack = self._gateway.place_market_order(
             account_id=req.account_id,
             symbol=req.symbol,
@@ -137,10 +180,28 @@ class MultiAccountLiveExecutor:
         )
         self._acks[cache_key] = ack
         self._request_fingerprint_by_key[cache_key] = req_fingerprint
+        self._audit(
+            event_type="execution.order_acknowledged",
+            payload={
+                "account_id": req.account_id,
+                "client_order_id": req.client_order_id,
+                "exchange_order_id": ack.exchange_order_id,
+                "accepted_at": ack.accepted_at.isoformat(),
+            },
+        )
         return ack
 
     def get_ack(self, account_id: str, client_order_id: str) -> LiveOrderAck | None:
         return self._acks.get((account_id, client_order_id))
+
+    def _audit(self, *, event_type: str, payload: dict[str, object]) -> None:
+        if self._audit_trail is None:
+            return
+        self._audit_trail.append(
+            event_type=event_type,
+            actor="multi_account_live_executor",
+            payload=payload,
+        )
 
     @property
     def accounts(self) -> tuple[str, ...]:
