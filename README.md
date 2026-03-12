@@ -88,6 +88,45 @@ Dynamic stop 觸發後，系統策略是：
 
 也就是說，dynamic stop 的目標是「阻止原方向風險延續」，不是凍結所有交易行為。
 
+## Adaptive tuner（策略參數動態調整 + RL bandit）
+
+可使用 `AdaptiveParameterController` 依固定 cadence 做重調（retune），
+並在候選參數中透過 epsilon-greedy bandit 進行探索/利用。
+
+```python
+from cryptoquant.strategy import (
+    AdaptiveParameterController,
+    AdaptiveStrategyConfig,
+    StrategyParameterSet,
+)
+
+candidates = [
+    StrategyParameterSet(fast_window=5, slow_window=20),
+    StrategyParameterSet(fast_window=8, slow_window=34),
+]
+
+controller = AdaptiveParameterController(
+    symbol="BTCUSDT",
+    candidates=candidates,
+    config=AdaptiveStrategyConfig(
+        lookback_events=120,
+        retune_interval_events=30,
+        epsilon=0.1,
+    ),
+)
+
+decision = controller.step(history_events)
+print(decision.mode, decision.selected_params)
+```
+
+限制與注意事項：
+
+- `lookback_events` 必須 `>= 20`，且 `history` 長度不足時會拋出例外。
+- `retune_interval_events` 必須 `>= 1`；非 retune 事件會重用前次最佳化結果（避免每筆都重跑 optimizer）。
+- `epsilon` 範圍必須在 `[0, 1]`。`epsilon=1` 為全探索。
+- bandit 在 exploit 階段若平均 reward 同分，會做隨機 tie-break，不固定取第一個候選。
+- reward 更新值必須是有限數值（finite number）。
+
 ## 開發
 
 ```bash

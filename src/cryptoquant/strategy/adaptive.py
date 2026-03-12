@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from random import SystemRandom
 from dataclasses import dataclass
+from math import isfinite
+from random import SystemRandom
 from typing import Sequence
 
 from cryptoquant.events.market import MarketEvent
@@ -50,6 +51,8 @@ class EpsilonGreedyParameterBandit:
     def update(self, params: StrategyParameterSet, reward: float) -> None:
         if params not in self._reward_sum:
             raise ValueError("params not in candidate set")
+        if not isfinite(reward):
+            raise ValueError("reward must be a finite number")
         self._reward_sum[params] += reward
         self._reward_count[params] += 1
 

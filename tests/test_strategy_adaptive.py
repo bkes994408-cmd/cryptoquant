@@ -67,6 +67,12 @@ def test_bandit_validates_epsilon_bounds() -> None:
         EpsilonGreedyParameterBandit([p], epsilon=1.01)
 
 
+def test_bandit_accepts_non_typical_epsilon_value() -> None:
+    p = StrategyParameterSet(fast_window=2, slow_window=4)
+    bandit = EpsilonGreedyParameterBandit([p], epsilon=0.37)
+    assert bandit.select() == p
+
+
 def test_bandit_epsilon_one_always_explores(monkeypatch: pytest.MonkeyPatch) -> None:
     p1 = StrategyParameterSet(fast_window=2, slow_window=4)
     p2 = StrategyParameterSet(fast_window=3, slow_window=8)
@@ -89,6 +95,16 @@ def test_bandit_exploit_tie_break_is_not_stuck_on_first_candidate(monkeypatch: p
 
     monkeypatch.setattr(bandit._rng, "choice", lambda seq: seq[-1])
     assert bandit.select() == p2
+
+
+def test_bandit_update_rejects_non_finite_reward() -> None:
+    p = StrategyParameterSet(fast_window=2, slow_window=4)
+    bandit = EpsilonGreedyParameterBandit([p], epsilon=0.1)
+
+    with pytest.raises(ValueError, match="finite"):
+        bandit.update(p, float("nan"))
+    with pytest.raises(ValueError, match="finite"):
+        bandit.update(p, float("inf"))
 
 
 def test_adaptive_controller_retune_then_hold_without_reoptimizing_each_hold(monkeypatch: pytest.MonkeyPatch) -> None:
