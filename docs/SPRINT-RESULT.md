@@ -1,5 +1,37 @@
 # Sprint Result
 
+## MVP-8：實時交易集成與高級風控 / 策略參數動態調整與強化學習應用（2026-03-12）
+
+1. 新增動態參數調整控制器（retune + hold）
+   - `src/cryptoquant/strategy/adaptive.py`
+   - 提供：
+     - `AdaptiveStrategyConfig`（lookback / retune interval / epsilon）
+     - `EpsilonGreedyParameterBandit`（探索/利用）
+     - `AdaptiveParameterController`（週期重整 + 線上 reward 更新）
+
+2. 與既有策略最佳化流程整合
+   - 控制器使用 `AutomatedStrategyOptimizer` 的 leaderboard 結果作為 reward 來源
+   - 非重整周期採 `hold` 模式，重用上次 optimization 結果，避免每筆事件都做完整重算
+
+3. 測試覆蓋
+   - `tests/test_strategy_adaptive.py`
+   - 涵蓋：
+     - epsilon 邊界/探索/利用行為
+     - 非有限 reward 防呆
+     - retune/hold 週期與 optimize 呼叫次數
+     - 與 `StrategyEngine` 的最小整合流程
+
+4. 文件更新
+   - 更新 `docs/ROADMAP.md`：勾選 `MVP-8` 子項 `策略參數動態調整與強化學習應用`
+
+驗證結果（2026-03-12）：
+
+- `.venv/bin/python -m pytest -q tests/test_strategy_optimizer.py`
+  `tests/test_strategy_adaptive.py tests/test_strategy_engine.py` ✅（13 passed）
+- `.venv/bin/python -m pytest -q` ✅（148 passed）
+
+---
+
 ## MVP-8：實時交易集成與高級風控 / 實時風控預警與動態停損機制（2026-03-11）
 
 1. 風控模組能力補強（realtime alert + dynamic stop）
