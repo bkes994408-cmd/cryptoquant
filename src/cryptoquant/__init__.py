@@ -8,7 +8,7 @@ from .events.market import MarketEvent
 from .events.bus import EventBus
 from .market import BinanceKlineWSClient
 from .strategy import StrategyDecision, StrategyEngine, MovingAverageCrossoverStrategy
-from .risk import KillSwitch, RiskInput, RiskLimits, RiskManager, RiskResult
+from .risk import KillSwitch, RiskInput, RiskLimits, RiskManager, RiskResult, RiskStatus
 from .oms import OMS, Order, OrderStatus
 from .execution import (
     BinanceFuturesOrderGateway,
@@ -48,6 +48,7 @@ __all__ = [
     "RiskLimits",
     "RiskManager",
     "RiskResult",
+    "RiskStatus",
     "KillSwitch",
     "OMS",
     "Order",

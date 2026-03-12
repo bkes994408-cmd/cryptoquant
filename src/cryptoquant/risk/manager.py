@@ -54,6 +54,15 @@ class RiskResult:
     reason: str
 
 
+@dataclass(frozen=True)
+class RiskStatus:
+    daily_stop_triggered: bool
+    dynamic_stop_triggered: bool
+    tracked_side: int
+    tracked_extreme_price: float | None
+    dynamic_stop_price: float | None
+
+
 class RiskManager:
     """Apply position caps, real-time alerts, and dynamic stop-loss constraints."""
 
@@ -75,6 +84,7 @@ class RiskManager:
         self._tracked_side: int = 0
         self._tracked_extreme_price: float | None = None
         self._dynamic_stop_triggered = False
+        self._dynamic_stop_enforced_alert_active = False
 
         self._notional_warn_active = False
         self._leverage_warn_active = False
@@ -94,13 +104,17 @@ class RiskManager:
 
         if self._dynamic_stop_triggered and self._is_maintaining_or_adding_risk(req.current_qty, approved):
             approved = 0.0
-            self._emit_alert(
-                RiskAlert(
-                    level=RiskAlertLevel.ERROR,
-                    code="risk.dynamic_stop.enforced",
-                    message="dynamic stop-loss enforced: force flatten target to zero",
+            if not self._dynamic_stop_enforced_alert_active:
+                self._emit_alert(
+                    RiskAlert(
+                        level=RiskAlertLevel.ERROR,
+                        code="risk.dynamic_stop.enforced",
+                        message="dynamic stop-loss enforced: force flatten target to zero",
+                    )
                 )
-            )
+            self._dynamic_stop_enforced_alert_active = True
+        else:
+            self._dynamic_stop_enforced_alert_active = False
 
         max_by_notional = self._limits.notional_cap / req.price
         max_by_leverage = (self._limits.leverage_cap * req.equity) / req.price
@@ -185,6 +199,38 @@ class RiskManager:
                     ),
                 )
             )
+
+    def status(self) -> RiskStatus:
+        """Return the current risk-state snapshot for observability and diagnostics.
+
+        Field semantics:
+        - ``daily_stop_triggered``: whether daily drawdown stop is currently active.
+        - ``dynamic_stop_triggered``: whether trailing dynamic stop has been hit on the
+          currently tracked position side.
+        - ``tracked_side``: position side being tracked by dynamic stop logic
+          (1=long, -1=short, 0=flat/not tracking).
+        - ``tracked_extreme_price``: best favorable price observed since current side was
+          first tracked (highest for long, lowest for short).
+        - ``dynamic_stop_price``: current computed trailing stop threshold from
+          ``tracked_extreme_price`` and ``dynamic_stop.trailing_pct``. This is ``None``
+          when dynamic stop is disabled, when there is no tracked extreme price yet, or
+          when no side is being tracked (``tracked_side == 0``).
+        """
+        return RiskStatus(
+            daily_stop_triggered=self._daily_stop_triggered,
+            dynamic_stop_triggered=self._dynamic_stop_triggered,
+            tracked_side=self._tracked_side,
+            tracked_extreme_price=self._tracked_extreme_price,
+            dynamic_stop_price=self._dynamic_stop_price(),
+        )
+
+    def _dynamic_stop_price(self) -> float | None:
+        conf = self._limits.dynamic_stop
+        if conf is None or self._tracked_extreme_price is None or self._tracked_side == 0:
+            return None
+        if self._tracked_side > 0:
+            return self._tracked_extreme_price * (1 - conf.trailing_pct)
+        return self._tracked_extreme_price * (1 + conf.trailing_pct)
 
     def _emit_utilization_alerts(self, *, notional: float, leverage: float) -> None:
         notional_util = notional / self._limits.notional_cap

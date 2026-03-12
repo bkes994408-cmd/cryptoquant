@@ -1,4 +1,6 @@
+from .data_sources import CSVDataSourceConfig, CSVMarketEventSource, MultiSourceEventLoader
 from .event_bus_benchmark import EventBusBenchmarkConfig, EventBusBenchmarkResult, run_event_bus_benchmark
+from .indicators import atr, bollinger_bands, ema, rsi, sma
 from .replay import BacktestResult, EventReplayer
 from .replay_resource_governance import (
     ReplayGovernanceConfig,
@@ -20,9 +22,12 @@ from .robustness import (
 
 __all__ = [
     "BacktestResult",
+    "CSVDataSourceConfig",
+    "CSVMarketEventSource",
     "EventBusBenchmarkConfig",
     "EventBusBenchmarkResult",
     "EventReplayer",
+    "MultiSourceEventLoader",
     "RegimeSplitConfig",
     "RegimeSplitReport",
     "ReplayGovernanceConfig",
@@ -32,9 +37,14 @@ __all__ = [
     "WalkForwardConfig",
     "WalkForwardReport",
     "WalkForwardSliceResult",
+    "atr",
+    "bollinger_bands",
+    "ema",
     "evaluate_strategy_metrics",
+    "rsi",
     "run_event_bus_benchmark",
     "run_large_sample_replay_governance",
     "run_regime_split_validation",
     "run_walk_forward_validation",
+    "sma",
 ]
