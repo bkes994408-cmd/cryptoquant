@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import time
 from dataclasses import dataclass
 from typing import Any, Callable
 
@@ -32,7 +33,7 @@ class AuditTrail:
         now_ms_fn: Callable[[], int] | None = None,
         genesis_hash: str = "GENESIS",
     ) -> None:
-        self._now_ms_fn = now_ms_fn or (lambda: 0)
+        self._now_ms_fn = now_ms_fn or (lambda: time.time_ns() // 1_000_000)
         self._genesis_hash = genesis_hash
         self._events: list[AuditEvent] = []
 

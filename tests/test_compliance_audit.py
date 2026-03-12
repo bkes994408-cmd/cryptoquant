@@ -57,6 +57,14 @@ def test_audit_trail_hash_chain_and_redaction() -> None:
     assert trail.verify_chain() is True
 
 
+def test_audit_trail_default_timestamp_is_real_time() -> None:
+    trail = AuditTrail()
+
+    event = trail.append(event_type="x", actor="a", payload={"k": "v"})
+
+    assert event.ts_ms > 0
+
+
 def test_audit_trail_detects_tamper() -> None:
     trail = AuditTrail(now_ms_fn=lambda: 1000)
     trail.append(event_type="x", actor="a", payload={"k": "v"})
