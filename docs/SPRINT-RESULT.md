@@ -24,7 +24,9 @@
 驗證結果（2026-03-14）：
 
 - `.venv/bin/python -m pytest -q tests/test_multi_strategy_portfolio_manager.py` ✅（3 passed）
-- `.venv/bin/python -m pytest -q tests/test_multi_strategy_portfolio_manager.py tests/test_portfolio_optimizer.py tests/test_strategy_engine.py` ✅（7 passed）
+- `.venv/bin/python -m pytest -q`
+  `tests/test_multi_strategy_portfolio_manager.py`
+  `tests/test_portfolio_optimizer.py tests/test_strategy_engine.py` ✅（7 passed）
 
 ---
 
@@ -66,7 +68,8 @@
    - 更新 `src/cryptoquant/risk/manager.py`
    - 新增 `RiskStatus` 狀態快照
      （daily stop / dynamic stop / side / extreme / stop price）
-   - 動態停損強制平倉告警去重：在條件持續期間只發一次 `risk.dynamic_stop.enforced`，降低告警噪音
+   - 動態停損強制平倉告警去重：在條件持續期間只發一次
+     `risk.dynamic_stop.enforced`，降低告警噪音
 
 2. API 導出
    - 更新 `src/cryptoquant/risk/__init__.py`、`src/cryptoquant/__init__.py`
@@ -172,7 +175,8 @@
 
 ---
 
-## MVP-6：進階回測策略驗證框架 / 回測事件匯流排壓測基準（p95 latency / max throughput）（2026-03-09）
+## MVP-6：進階回測策略驗證框架 /
+## 回測事件匯流排壓測基準（p95 latency / max throughput）（2026-03-09）
 
 1. 新增事件匯流排壓測框架
    - 新增 `src/cryptoquant/backtest/event_bus_benchmark.py`
@@ -268,7 +272,8 @@
    - 新增 `src/cryptoquant/market/__init__.py`
 
 2. BarAggregator（15m/1h）+ 基本 gap fill
-   - 原有 `BarAggregator` 已具備 15m/1h 聚合與 gap fill；本輪以資料流測試補齊驗證，確認可銜接 MarketEvent。
+   - 原有 `BarAggregator` 已具備 15m/1h 聚合與 gap fill；
+     本輪以資料流測試補齊驗證，確認可銜接 MarketEvent。
 
 3. 最小測試（驗證資料流可運作）
    - 新增 `tests/test_market_ws.py`
@@ -384,7 +389,8 @@
 
 ---
 
-## MVP-6：進階回測策略驗證框架 / 大樣本回放資源治理（memory / queue backpressure 可觀測）（2026-03-09）
+## MVP-6：進階回測策略驗證框架 /
+## 大樣本回放資源治理（memory / queue backpressure 可觀測）（2026-03-09）
 
 1. 新增大樣本回放資源治理模組
    - 新增 `src/cryptoquant/backtest/replay_resource_governance.py`
