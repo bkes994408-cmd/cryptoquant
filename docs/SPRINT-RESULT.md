@@ -1,5 +1,33 @@
 # Sprint Result
 
+## MVP-9：智能決策與多策略組合 / 多策略投資組合管理（2026-03-14）
+
+1. 新增多策略投資組合管理模組
+   - 新增 `src/cryptoquant/portfolio/multi_strategy.py`
+   - 提供：
+     - `MultiStrategyPortfolioManager`：可同時運行多策略並彙總目標倉位
+     - `MultiStrategyConfig`：最小歷史長度、再平衡頻率、最佳化設定
+     - `MultiStrategyDecision`：輸出聚合目標倉位、各策略決策、權重、分散度
+
+2. 自動資金分配最佳化整合
+   - 透過既有 `optimize_strategy_weights(...)` 對策略報酬序列進行風險調整後權重配置
+   - 支援按 `rebalance_interval` 週期重算，避免每次事件都觸發完整最佳化
+
+3. API 導出與測試補齊
+   - 更新 `src/cryptoquant/portfolio/__init__.py` 導出多策略管理 API
+   - 新增 `tests/test_multi_strategy_portfolio_manager.py`
+   - 覆蓋：
+     - 多策略並行決策與預設等權重聚合
+     - 根據已實現報酬觸發再平衡並提升高風險調整收益策略權重
+     - 報酬輸入策略名稱一致性驗證
+
+驗證結果（2026-03-14）：
+
+- `.venv/bin/python -m pytest -q tests/test_multi_strategy_portfolio_manager.py` ✅（3 passed）
+- `.venv/bin/python -m pytest -q tests/test_multi_strategy_portfolio_manager.py tests/test_portfolio_optimizer.py tests/test_strategy_engine.py` ✅（7 passed）
+
+---
+
 ## MVP-8：實時交易集成與高級風控 / 策略參數動態調整與強化學習應用（2026-03-12）
 
 1. 新增動態參數調整控制器（retune + hold）
