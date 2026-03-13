@@ -177,3 +177,47 @@ def test_adaptive_controller_requires_sufficient_history() -> None:
 
     with pytest.raises(ValueError, match="insufficient history"):
         controller.step(_events([100.0] * 24))
+
+
+def test_adaptive_controller_ml_mode_outputs_prediction_and_dynamic_epsilon() -> None:
+    controller = AdaptiveParameterController(
+        symbol="BTCUSDT",
+        candidates=[
+            StrategyParameterSet(fast_window=2, slow_window=4),
+            StrategyParameterSet(fast_window=5, slow_window=10),
+        ],
+        config=AdaptiveStrategyConfig(
+            lookback_events=40,
+            retune_interval_events=2,
+            epsilon=0.1,
+            enable_ml_adaptation=True,
+            ml_feature_window=8,
+            epsilon_min=0.05,
+            epsilon_max=0.25,
+        ),
+    )
+
+    history = _events([100 + (i * 0.3) + ((-1) ** i) * 0.2 for i in range(80)])
+    decision = controller.step(history)
+
+    assert decision.predicted_return is not None
+    assert decision.dynamic_epsilon is not None
+    assert 0.05 <= decision.dynamic_epsilon <= 0.25
+
+
+def test_adaptive_controller_without_ml_keeps_ml_fields_empty() -> None:
+    controller = AdaptiveParameterController(
+        symbol="BTCUSDT",
+        candidates=[StrategyParameterSet(fast_window=2, slow_window=4)],
+        config=AdaptiveStrategyConfig(
+            lookback_events=30,
+            retune_interval_events=3,
+            enable_ml_adaptation=False,
+        ),
+    )
+
+    history = _events([100.0 + i for i in range(40)])
+    decision = controller.step(history)
+
+    assert decision.predicted_return is None
+    assert decision.dynamic_epsilon is None
