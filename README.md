@@ -133,11 +133,19 @@ controller = AdaptiveParameterController(
         lookback_events=120,
         retune_interval_events=30,
         epsilon=0.1,
+        enable_ml_adaptation=True,
+        ml_feature_window=20,
+        ml_weight=0.25,
     ),
 )
 
 decision = controller.step(history_events)
-print(decision.mode, decision.selected_params)
+print(
+    decision.mode,
+    decision.selected_params,
+    decision.predicted_return,
+    decision.dynamic_epsilon,
+)
 ```
 
 限制與注意事項：
