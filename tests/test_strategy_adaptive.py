@@ -6,6 +6,7 @@ import pytest
 
 from cryptoquant.aggregation import Bar
 from cryptoquant.events.market import MarketEvent
+from cryptoquant.sentiment import InMemorySentimentAdapter, SentimentItem, SentimentPipeline
 from cryptoquant.strategy import (
     AdaptiveParameterController,
     AdaptiveStrategyConfig,
@@ -221,3 +222,49 @@ def test_adaptive_controller_without_ml_keeps_ml_fields_empty() -> None:
 
     assert decision.predicted_return is None
     assert decision.dynamic_epsilon is None
+    assert decision.sentiment_score is None
+    assert decision.sentiment_confidence is None
+
+
+def test_adaptive_controller_sentiment_overlay_outputs_snapshot() -> None:
+    now = datetime.now(timezone.utc)
+    pipeline = SentimentPipeline(
+        InMemorySentimentAdapter(
+            [
+                SentimentItem(
+                    source="news",
+                    text="bullish breakout and strong adoption",
+                    ts=now - timedelta(hours=1),
+                ),
+                SentimentItem(
+                    source="social",
+                    text="bearish liquidation risk",
+                    ts=now - timedelta(hours=2),
+                ),
+            ]
+        )
+    )
+
+    controller = AdaptiveParameterController(
+        symbol="BTCUSDT",
+        candidates=[
+            StrategyParameterSet(fast_window=2, slow_window=4),
+            StrategyParameterSet(fast_window=6, slow_window=12),
+        ],
+        config=AdaptiveStrategyConfig(
+            lookback_events=30,
+            retune_interval_events=2,
+            enable_sentiment_overlay=True,
+            sentiment_weight=0.2,
+            sentiment_lookback_hours=24,
+        ),
+        sentiment_pipeline=pipeline,
+    )
+
+    history = _events([100.0 + i for i in range(45)])
+    decision = controller.step(history)
+
+    assert decision.sentiment_score is not None
+    assert decision.sentiment_confidence is not None
+    assert -1.0 <= decision.sentiment_score <= 1.0
+    assert 0.0 <= decision.sentiment_confidence <= 1.0

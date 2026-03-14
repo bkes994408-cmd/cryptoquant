@@ -42,6 +42,14 @@ from .execution import (
 from .backtest import BacktestResult, EventReplayer
 from .security import DEFAULT_SECRET_KEYS, redact_secrets
 from .monitoring import Alert, AlertLevel, AlertSink, Monitoring
+from .sentiment import (
+    InMemorySentimentAdapter,
+    KeywordSentimentScorer,
+    SentimentAdapter,
+    SentimentItem,
+    SentimentPipeline,
+    SentimentSnapshot,
+)
 
 __all__ = [
     "EventBus",
@@ -92,4 +100,10 @@ __all__ = [
     "AlertLevel",
     "AlertSink",
     "Monitoring",
+    "SentimentItem",
+    "SentimentSnapshot",
+    "SentimentAdapter",
+    "InMemorySentimentAdapter",
+    "KeywordSentimentScorer",
+    "SentimentPipeline",
 ]
