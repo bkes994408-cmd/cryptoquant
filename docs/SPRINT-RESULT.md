@@ -23,7 +23,8 @@
 
 驗證結果（2026-03-14）：
 
-- `.venv/bin/python -m pytest -q tests/test_multi_strategy_portfolio_manager.py` ✅（3 passed）
+- `.venv/bin/python -m pytest -q`
+  `tests/test_multi_strategy_portfolio_manager.py` ✅（3 passed）
 - `.venv/bin/python -m pytest -q`
   `tests/test_multi_strategy_portfolio_manager.py`
   `tests/test_portfolio_optimizer.py tests/test_strategy_engine.py` ✅（7 passed）
@@ -175,7 +176,8 @@
 
 ---
 
-## MVP-6：進階回測策略驗證框架 /
+MVP-6：進階回測策略驗證框架
+
 ## 回測事件匯流排壓測基準（p95 latency / max throughput）（2026-03-09）
 
 1. 新增事件匯流排壓測框架
@@ -389,7 +391,8 @@
 
 ---
 
-## MVP-6：進階回測策略驗證框架 /
+MVP-6：進階回測策略驗證框架
+
 ## 大樣本回放資源治理（memory / queue backpressure 可觀測）（2026-03-09）
 
 1. 新增大樣本回放資源治理模組
