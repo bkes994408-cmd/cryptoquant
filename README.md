@@ -115,6 +115,9 @@ Dynamic stop 觸發後，系統策略是：
 並在候選參數中透過 epsilon-greedy bandit 進行探索/利用。
 
 ```python
+from datetime import datetime, timezone
+
+from cryptoquant.sentiment import InMemorySentimentAdapter, SentimentItem, SentimentPipeline
 from cryptoquant.strategy import (
     AdaptiveParameterController,
     AdaptiveStrategyConfig,
@@ -126,6 +129,14 @@ candidates = [
     StrategyParameterSet(fast_window=8, slow_window=34),
 ]
 
+sentiment = SentimentPipeline(
+    InMemorySentimentAdapter(
+        [
+            SentimentItem(source="news", text="bullish breakout", ts=datetime.now(timezone.utc)),
+        ]
+    )
+)
+
 controller = AdaptiveParameterController(
     symbol="BTCUSDT",
     candidates=candidates,
@@ -136,7 +147,10 @@ controller = AdaptiveParameterController(
         enable_ml_adaptation=True,
         ml_feature_window=20,
         ml_weight=0.25,
+        enable_sentiment_overlay=True,
+        sentiment_weight=0.15,
     ),
+    sentiment_pipeline=sentiment,
 )
 
 decision = controller.step(history_events)

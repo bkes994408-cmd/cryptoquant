@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import timedelta
 from math import isfinite
 from random import SystemRandom
 from typing import Sequence
 
 from cryptoquant.events.market import MarketEvent
+from cryptoquant.sentiment import SentimentPipeline, SentimentSnapshot
 from cryptoquant.strategy.optimizer import (
     AutomatedStrategyOptimizer,
     StrategyOptimizationResult,
@@ -25,6 +27,9 @@ class AdaptiveStrategyConfig:
     ml_weight: float = 0.25
     epsilon_min: float = 0.02
     epsilon_max: float = 0.35
+    enable_sentiment_overlay: bool = False
+    sentiment_weight: float = 0.15
+    sentiment_lookback_hours: int = 24
 
 
 class EpsilonGreedyParameterBandit:
@@ -82,6 +87,8 @@ class AdaptiveDecision:
     mode: str  # "retune" or "hold"
     predicted_return: float | None = None
     dynamic_epsilon: float | None = None
+    sentiment_score: float | None = None
+    sentiment_confidence: float | None = None
 
 
 class _OnlineLinearReturnModel:
@@ -128,6 +135,7 @@ class AdaptiveParameterController:
         config: AdaptiveStrategyConfig | None = None,
         objective: str = "net_pnl",
         base_qty: float = 1.0,
+        sentiment_pipeline: SentimentPipeline | None = None,
     ) -> None:
         cfg = config or AdaptiveStrategyConfig()
         if cfg.lookback_events < 20:
@@ -140,6 +148,10 @@ class AdaptiveParameterController:
             raise ValueError("ml_weight must be >= 0")
         if not 0 <= cfg.epsilon_min <= cfg.epsilon_max <= 1:
             raise ValueError("epsilon_min/epsilon_max must satisfy 0 <= min <= max <= 1")
+        if cfg.sentiment_weight < 0:
+            raise ValueError("sentiment_weight must be >= 0")
+        if cfg.sentiment_lookback_hours < 1:
+            raise ValueError("sentiment_lookback_hours must be >= 1")
 
         self._symbol = symbol
         self._candidates = list(candidates)
@@ -157,6 +169,7 @@ class AdaptiveParameterController:
         self._last_selected = self._candidates[0]
         self._last_optimization: StrategyOptimizationResult | None = None
         self._model = _OnlineLinearReturnModel() if cfg.enable_ml_adaptation else None
+        self._sentiment_pipeline = sentiment_pipeline
 
     def step(self, history: Sequence[MarketEvent]) -> AdaptiveDecision:
         if len(history) < self._config.lookback_events:
@@ -204,6 +217,10 @@ class AdaptiveParameterController:
         if predicted_return is not None:
             reward += self._ml_reward_adjustment(predicted_return, params)
 
+        sentiment_snapshot = self._sentiment_snapshot()
+        if sentiment_snapshot is not None:
+            reward += self._sentiment_reward_adjustment(sentiment_snapshot, params)
+
         self._bandit.update(params, reward)
         self._last_selected = params
         return AdaptiveDecision(
@@ -212,6 +229,8 @@ class AdaptiveParameterController:
             mode=mode,
             predicted_return=predicted_return,
             dynamic_epsilon=dynamic_epsilon,
+            sentiment_score=None if sentiment_snapshot is None else sentiment_snapshot.score,
+            sentiment_confidence=None if sentiment_snapshot is None else sentiment_snapshot.confidence,
         )
 
     def _ml_reward_adjustment(self, predicted_return: float, params: StrategyParameterSet) -> float:
@@ -220,6 +239,25 @@ class AdaptiveParameterController:
         target_aggressiveness = min(1.0, abs(predicted_return) * 150.0)
         mismatch_penalty = abs(aggressiveness - target_aggressiveness)
         return -self._config.ml_weight * mismatch_penalty
+
+    def _sentiment_snapshot(self) -> SentimentSnapshot | None:
+        if not self._config.enable_sentiment_overlay:
+            return None
+        if self._sentiment_pipeline is None:
+            return None
+        lookback = timedelta(hours=self._config.sentiment_lookback_hours)
+        return self._sentiment_pipeline.snapshot(lookback=lookback)
+
+    def _sentiment_reward_adjustment(
+        self,
+        snapshot: SentimentSnapshot,
+        params: StrategyParameterSet,
+    ) -> float:
+        aggressiveness = params.fast_window / params.slow_window
+        sentiment_target = (snapshot.score + 1.0) / 2.0
+        mismatch_penalty = abs(aggressiveness - sentiment_target)
+        confidence = snapshot.confidence
+        return -self._config.sentiment_weight * confidence * mismatch_penalty
 
 
 def _market_returns(events: Sequence[MarketEvent]) -> list[float]:
