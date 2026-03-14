@@ -1,3 +1,8 @@
+from .multi_strategy import (
+    MultiStrategyConfig,
+    MultiStrategyDecision,
+    MultiStrategyPortfolioManager,
+)
 from .optimizer import (
     OptimizationConfig,
     OptimizationResult,
@@ -14,6 +19,9 @@ from .rebalancing import (
 )
 
 __all__ = [
+    "MultiStrategyConfig",
+    "MultiStrategyDecision",
+    "MultiStrategyPortfolioManager",
     "OptimizationConfig",
     "OptimizationResult",
     "StrategyStats",
