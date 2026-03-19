@@ -7,7 +7,20 @@ from pathlib import Path
 from cryptoquant.backtest.simple import run_sma_crossover_backtest
 from cryptoquant.data import BAR_V1_DICTIONARY, CsvBarDataSource
 from cryptoquant.indicators import EMAIndicator, IndicatorRegistry, SMAIndicator
-from cryptoquant.reporting import save_equity_curve_csv, save_report_csv, save_report_json, save_report_markdown
+from cryptoquant.reporting import save_report_csv, save_report_json, save_report_markdown
+
+try:
+    from cryptoquant.reporting import save_equity_curve_csv
+except ImportError:  # backward compatibility for minimal reporting module
+    def save_equity_curve_csv(equity_curve: list[float], path: Path) -> None:
+        import csv
+
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("w", newline="", encoding="utf-8") as fh:
+            writer = csv.DictWriter(fh, fieldnames=["index", "equity"])
+            writer.writeheader()
+            for idx, equity in enumerate(equity_curve):
+                writer.writerow({"index": idx, "equity": equity})
 
 
 def build_registry() -> IndicatorRegistry:
@@ -103,10 +116,11 @@ def cmd_backtest(args: argparse.Namespace) -> int:
     if args.export_equity_csv:
         save_equity_curve_csv(result.equity_curve, out_dir / "equity_curve.csv")
 
+    sharpe = getattr(result.report, "sharpe_ratio", 0.0)
     print(
         "backtest done: "
         f"return={result.report.total_return:.4f}, "
-        f"sharpe={result.report.sharpe_ratio:.4f}, "
+        f"sharpe={sharpe:.4f}, "
         f"trades={result.report.trades}"
     )
     return 0
