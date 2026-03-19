@@ -92,10 +92,24 @@ def cmd_datasources(_: argparse.Namespace) -> int:
     return 0
 
 
+def _create_indicator_plugin(registry: IndicatorRegistry, name: str, params: dict[str, str]):
+    if hasattr(registry, "create"):
+        return registry.create(name, **params)  # type: ignore[attr-defined]
+
+    plugin = registry.get(name)
+    if not params:
+        return plugin
+
+    typed_params: dict[str, object] = {}
+    for key, value in params.items():
+        typed_params[key] = int(value) if str(value).isdigit() else value
+    return type(plugin)(**typed_params)
+
+
 def cmd_backtest(args: argparse.Namespace) -> int:
     registry = build_registry()
     name, params = parse_indicator(args.indicator)
-    plugin = registry.create(name, **params)
+    plugin = _create_indicator_plugin(registry, name, params)
 
     start = datetime.fromisoformat(args.start) if args.start else None
     end = datetime.fromisoformat(args.end) if args.end else None
