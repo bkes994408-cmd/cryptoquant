@@ -114,7 +114,7 @@ class MultiAccountLiveExecutor:
         if req.qty == 0:
             raise ValueError("qty must be non-zero")
         if self._kill_switch is not None:
-            self._kill_switch.assert_allows_execution()
+            self._kill_switch.assert_allows_execution(account_id=req.account_id)
 
         cache_key = (req.account_id, req.client_order_id)
         cached = self._acks.get(cache_key)
