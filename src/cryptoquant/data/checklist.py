@@ -44,11 +44,11 @@ class DataQualityChecklist:
             symbol = str(row.get("symbol", ""))
             timeframe = str(row.get("timeframe", ""))
             ts = row.get("ts")
-            o = row.get("open")
-            h = row.get("high")
-            l = row.get("low")
-            c = row.get("close")
-            v = row.get("volume", 0.0)
+            open_price = row.get("open")
+            high_price = row.get("high")
+            low_price = row.get("low")
+            close_price = row.get("close")
+            volume = row.get("volume", 0.0)
 
             if not symbol:
                 issues.append(DataQualityIssue(idx, "MISSING_SYMBOL", "symbol is required"))
@@ -58,22 +58,28 @@ class DataQualityChecklist:
                 issues.append(DataQualityIssue(idx, "INVALID_TS", "ts must be datetime"))
                 continue
 
-            for field_name, field_value in (("open", o), ("high", h), ("low", l), ("close", c), ("volume", v)):
+            for field_name, field_value in (
+                ("open", open_price),
+                ("high", high_price),
+                ("low", low_price),
+                ("close", close_price),
+                ("volume", volume),
+            ):
                 if not isinstance(field_value, (int, float)):
                     issues.append(
                         DataQualityIssue(idx, "INVALID_NUMERIC", f"{field_name} must be numeric")
                     )
 
-            if isinstance(h, (int, float)) and isinstance(l, (int, float)) and h < l:
+            if isinstance(high_price, (int, float)) and isinstance(low_price, (int, float)) and high_price < low_price:
                 issues.append(DataQualityIssue(idx, "INVALID_RANGE", "high must be >= low"))
 
-            if all(isinstance(x, (int, float)) for x in (o, h, l, c)):
-                if not (l <= o <= h):
+            if all(isinstance(x, (int, float)) for x in (open_price, high_price, low_price, close_price)):
+                if not (low_price <= open_price <= high_price):
                     issues.append(DataQualityIssue(idx, "OPEN_OUT_OF_RANGE", "open must be within [low, high]"))
-                if not (l <= c <= h):
+                if not (low_price <= close_price <= high_price):
                     issues.append(DataQualityIssue(idx, "CLOSE_OUT_OF_RANGE", "close must be within [low, high]"))
 
-            if isinstance(v, (int, float)) and v < 0:
+            if isinstance(volume, (int, float)) and volume < 0:
                 issues.append(DataQualityIssue(idx, "NEGATIVE_VOLUME", "volume must be >= 0"))
 
             if expected_symbol and symbol and symbol != expected_symbol:
