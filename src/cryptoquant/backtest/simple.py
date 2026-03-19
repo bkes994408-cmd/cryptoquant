@@ -62,20 +62,12 @@ def run_sma_crossover_backtest(
         dd = (peak - equity) / peak if peak else 0.0
         max_drawdown = max(max_drawdown, dd)
 
-    annualized_return = _annualized_return(total_return=equity - 1, bars=len(bars), timeframe=bars[0].timeframe)
-    sharpe_ratio = _sharpe_ratio(active_returns, bars[0].timeframe)
-    win_rate = _win_rate(active_returns)
-
     report = BacktestReport(
         symbol=bars[0].symbol,
         timeframe=bars[0].timeframe,
         bars=len(bars),
         trades=trades,
         total_return=equity - 1,
-        annualized_return=annualized_return,
-        sharpe_ratio=sharpe_ratio,
-        win_rate=win_rate,
-        final_equity=equity,
         max_drawdown=max_drawdown,
     )
     return BacktestResult(equity_curve=curve, report=report)
