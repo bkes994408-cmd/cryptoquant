@@ -4,7 +4,7 @@ import csv
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Iterable, Protocol
+from typing import Callable, Iterable, Mapping, Protocol
 
 from cryptoquant.aggregation import Bar
 from cryptoquant.data.checklist import DataQualityChecklist
@@ -103,38 +103,73 @@ class CsvBarDataSource:
                         continue
                 normalized_rows.append(normalized)
 
-        if self.quality_checklist is not None:
-            report = self.quality_checklist.validate(
-                normalized_rows,
-                expected_symbol=symbol,
-                expected_timeframe=timeframe,
-            )
-            if not report.passed:
-                head = ", ".join(f"{i.code}@{i.row_index}" for i in report.issues[:5])
-                raise ValueError(f"data quality check failed ({report.issue_count} issues): {head}")
+        return _rows_to_bars(
+            normalized_rows,
+            symbol=symbol,
+            timeframe=timeframe,
+            dictionary=self.dictionary,
+            quality_checklist=self.quality_checklist,
+            version_store=self.version_store,
+            dataset_name=self.dataset_name,
+        )
 
-        if self.version_store is not None:
-            version = build_dataset_version(
-                dataset=self.dataset_name,
-                schema_version=self.dictionary.schema_version,
-                rows=normalized_rows,
-            )
-            self.version_store.save(version)
 
-        bars = [
-            Bar(
-                symbol=str(row["symbol"]),
-                timeframe=str(row["timeframe"]),
-                ts=row["ts"],
-                open=float(row["open"]),
-                high=float(row["high"]),
-                low=float(row["low"]),
-                close=float(row["close"]),
-                volume=float(row["volume"]),
-            )
-            for row in normalized_rows
-        ]
-        return sorted(bars, key=lambda b: b.ts)
+@dataclass
+class ParquetBarDataSource:
+    path: Path
+    dictionary: DataDictionary = BAR_V1_DICTIONARY
+    quality_checklist: DataQualityChecklist | None = field(default_factory=DataQualityChecklist)
+    version_store: DatasetVersionStore | None = None
+    dataset_name: str = "historical-bars"
+    # 測試與替代讀取器可注入；預設使用 pyarrow。
+    row_loader: Callable[[Path], list[Mapping[str, object]]] | None = None
+
+    def fetch_bars(
+        self,
+        *,
+        symbol: str,
+        timeframe: str,
+        start: datetime | None = None,
+        end: datetime | None = None,
+    ) -> list[Bar]:
+        rows = self._load_rows()
+        normalized_rows: list[dict[str, object]] = []
+
+        for row in rows:
+            normalized = self.dictionary.normalize(dict(row))
+            if normalized["symbol"] != symbol or normalized["timeframe"] != timeframe:
+                continue
+            ts = normalized["ts"]
+            if isinstance(ts, datetime):
+                if start and ts < start:
+                    continue
+                if end and ts > end:
+                    continue
+            normalized_rows.append(normalized)
+
+        return _rows_to_bars(
+            normalized_rows,
+            symbol=symbol,
+            timeframe=timeframe,
+            dictionary=self.dictionary,
+            quality_checklist=self.quality_checklist,
+            version_store=self.version_store,
+            dataset_name=self.dataset_name,
+        )
+
+    def _load_rows(self) -> list[Mapping[str, object]]:
+        if self.row_loader is not None:
+            return self.row_loader(self.path)
+
+        try:
+            import pyarrow.parquet as pq  # type: ignore[import-not-found]
+        except ImportError as exc:
+            raise ImportError(
+                "ParquetBarDataSource requires 'pyarrow'. Install optional dependency first."
+            ) from exc
+
+        table = pq.read_table(self.path)
+        return table.to_pylist()
 
 
 @dataclass
@@ -163,3 +198,47 @@ def ensure_data_source(source: DataSource | Iterable[Bar]) -> DataSource:
     if hasattr(source, "fetch_bars"):
         return source  # type: ignore[return-value]
     return InMemoryBarDataSource(list(source))
+
+
+def _rows_to_bars(
+    normalized_rows: list[dict[str, object]],
+    *,
+    symbol: str,
+    timeframe: str,
+    dictionary: DataDictionary,
+    quality_checklist: DataQualityChecklist | None,
+    version_store: DatasetVersionStore | None,
+    dataset_name: str,
+) -> list[Bar]:
+    if quality_checklist is not None:
+        report = quality_checklist.validate(
+            normalized_rows,
+            expected_symbol=symbol,
+            expected_timeframe=timeframe,
+        )
+        if not report.passed:
+            head = ", ".join(f"{i.code}@{i.row_index}" for i in report.issues[:5])
+            raise ValueError(f"data quality check failed ({report.issue_count} issues): {head}")
+
+    if version_store is not None:
+        version = build_dataset_version(
+            dataset=dataset_name,
+            schema_version=dictionary.schema_version,
+            rows=normalized_rows,
+        )
+        version_store.save(version)
+
+    bars = [
+        Bar(
+            symbol=str(row["symbol"]),
+            timeframe=str(row["timeframe"]),
+            ts=row["ts"],
+            open=float(row["open"]),
+            high=float(row["high"]),
+            low=float(row["low"]),
+            close=float(row["close"]),
+            volume=float(row["volume"]),
+        )
+        for row in normalized_rows
+    ]
+    return sorted(bars, key=lambda b: b.ts)

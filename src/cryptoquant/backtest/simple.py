@@ -11,6 +11,7 @@ from cryptoquant.reporting import BacktestReport
 @dataclass(frozen=True)
 class BacktestResult:
     equity_curve: list[float]
+    drawdown_curve: list[float]
     report: BacktestReport
 
 
@@ -27,7 +28,7 @@ def run_sma_crossover_backtest(
             total_return=0.0,
             max_drawdown=0.0,
         )
-        return BacktestResult(equity_curve=[], report=report)
+        return BacktestResult(equity_curve=[], drawdown_curve=[], report=report)
 
     values = indicator.compute(IndicatorContext(bars=bars))
 
@@ -37,6 +38,7 @@ def run_sma_crossover_backtest(
     pos = 0
     trades = 0
     curve: list[float] = [equity]
+    drawdown_curve: list[float] = [0.0]
     active_returns: list[float] = []
 
     for i in range(1, len(bars)):
@@ -60,7 +62,12 @@ def run_sma_crossover_backtest(
 
         peak = max(peak, equity)
         dd = (peak - equity) / peak if peak else 0.0
+        drawdown_curve.append(dd)
         max_drawdown = max(max_drawdown, dd)
+
+    annualized_return = _annualized_return(total_return=equity - 1, bars=len(bars), timeframe=bars[0].timeframe)
+    sharpe_ratio = _sharpe_ratio(active_returns, bars[0].timeframe)
+    win_rate = _win_rate(active_returns)
 
     report = BacktestReport(
         symbol=bars[0].symbol,
@@ -69,8 +76,12 @@ def run_sma_crossover_backtest(
         trades=trades,
         total_return=equity - 1,
         max_drawdown=max_drawdown,
+        annualized_return=annualized_return,
+        sharpe_ratio=sharpe_ratio,
+        win_rate=win_rate,
+        final_equity=equity,
     )
-    return BacktestResult(equity_curve=curve, report=report)
+    return BacktestResult(equity_curve=curve, drawdown_curve=drawdown_curve, report=report)
 
 
 def _annualized_return(*, total_return: float, bars: int, timeframe: str) -> float:
