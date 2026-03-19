@@ -83,3 +83,9 @@
 - [x] 統一資料字典/格式（Data Dictionary，bar.v1）
 - [x] 資料品質檢查模組（Checklist，OHLCV 基礎規則）
 - [x] 初步資料版本控管（Versioning，checksum + manifest）
+
+## MVP-16：投組級風控引擎
+
+- [x] 多策略淨曝險（Net Exposure）計算模組
+- [x] 相關性風險控管（pair / average correlation guard）
+- [x] VaR / CVaR 歷史模擬計算模組
