@@ -76,4 +76,10 @@
 - [x] 市場情緒分析整合：引入社群媒體、新聞等非結構化數據，
   進行情緒分析，為交易決策提供更多維度參考。
   （第一版：adapter + scoring pipeline + adaptive controller integration）
-- [ ] 歷史數據回測平台升級：支持更複雜的自定義指標和數據源，提供高效能的回測環境。
+- [x] 歷史數據回測平台升級：支持更複雜的自定義指標和數據源，提供高效能的回測環境。
+
+## MVP-10：歷史資料平台升級（Data Foundation）
+
+- [x] 統一資料字典/格式（Data Dictionary，bar.v1）
+- [x] 資料品質檢查模組（Checklist，OHLCV 基礎規則）
+- [x] 初步資料版本控管（Versioning，checksum + manifest）
