@@ -5,28 +5,23 @@ from datetime import datetime
 from pathlib import Path
 
 from cryptoquant.backtest.simple import run_sma_crossover_backtest
-from cryptoquant.data import BAR_V1_DICTIONARY, CsvBarDataSource
+from cryptoquant.data import BAR_V1_DICTIONARY, CsvBarDataSource, ParquetBarDataSource
 from cryptoquant.indicators import EMAIndicator, IndicatorRegistry, SMAIndicator
-from cryptoquant.reporting import save_report_csv, save_report_json, save_report_markdown
-
-try:
-    from cryptoquant.reporting import save_equity_curve_csv
-except ImportError:  # backward compatibility for minimal reporting module
-    def save_equity_curve_csv(equity_curve: list[float], path: Path) -> None:
-        import csv
-
-        path.parent.mkdir(parents=True, exist_ok=True)
-        with path.open("w", newline="", encoding="utf-8") as fh:
-            writer = csv.DictWriter(fh, fieldnames=["index", "equity"])
-            writer.writeheader()
-            for idx, equity in enumerate(equity_curve):
-                writer.writerow({"index": idx, "equity": equity})
+from cryptoquant.reporting import (
+    save_drawdown_curve_csv,
+    save_equity_curve_csv,
+    save_report_csv,
+    save_report_json,
+    save_report_markdown,
+)
 
 
 def build_registry() -> IndicatorRegistry:
     registry = IndicatorRegistry()
     registry.register(SMAIndicator())
     registry.register(EMAIndicator())
+    registry.register_factory("sma", lambda **kwargs: SMAIndicator(**kwargs))
+    registry.register_factory("ema", lambda **kwargs: EMAIndicator(**kwargs))
     return registry
 
 
@@ -54,7 +49,9 @@ def main(argv: list[str] | None = None) -> int:
     p_ds.set_defaults(func=cmd_datasources)
 
     p_run = sub.add_parser("backtest", help="Run historical backtest")
-    p_run.add_argument("--csv", required=True)
+    p_run.add_argument("--data", help="historical file path (csv/parquet)")
+    p_run.add_argument("--csv", help="legacy alias for --data (csv only)")
+    p_run.add_argument("--source", choices=["csv", "parquet"], default="csv")
     p_run.add_argument("--symbol", required=True)
     p_run.add_argument("--timeframe", default="1m")
     p_run.add_argument("--start")
@@ -71,6 +68,11 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="export equity curve to equity_curve.csv",
     )
+    p_run.add_argument(
+        "--export-drawdown-csv",
+        action="store_true",
+        help="export drawdown curve to drawdown_curve.csv",
+    )
     p_run.set_defaults(func=cmd_backtest)
 
     args = parser.parse_args(argv)
@@ -85,6 +87,7 @@ def cmd_indicators(_: argparse.Namespace) -> int:
 
 def cmd_datasources(_: argparse.Namespace) -> int:
     print("csv")
+    print("parquet")
     print(f"  schema={BAR_V1_DICTIONARY.schema_name}")
     print(f"  version={BAR_V1_DICTIONARY.schema_version}")
     print("  quality_check=enabled(default)")
@@ -106,6 +109,21 @@ def _create_indicator_plugin(registry: IndicatorRegistry, name: str, params: dic
     return type(plugin)(**typed_params)
 
 
+def _resolve_data_path(args: argparse.Namespace) -> Path:
+    raw = args.data or args.csv
+    if not raw:
+        raise ValueError("--data (or legacy --csv) is required")
+    return Path(raw)
+
+
+def _build_data_source(source: str, path: Path):
+    if source == "csv":
+        return CsvBarDataSource(path=path)
+    if source == "parquet":
+        return ParquetBarDataSource(path=path)
+    raise ValueError(f"unsupported source: {source}")
+
+
 def cmd_backtest(args: argparse.Namespace) -> int:
     registry = build_registry()
     name, params = parse_indicator(args.indicator)
@@ -114,7 +132,8 @@ def cmd_backtest(args: argparse.Namespace) -> int:
     start = datetime.fromisoformat(args.start) if args.start else None
     end = datetime.fromisoformat(args.end) if args.end else None
 
-    source = CsvBarDataSource(path=Path(args.csv))
+    data_path = _resolve_data_path(args)
+    source = _build_data_source(args.source, data_path)
     bars = source.fetch_bars(symbol=args.symbol, timeframe=args.timeframe, start=start, end=end)
     result = run_sma_crossover_backtest(bars, plugin)
 
@@ -129,6 +148,8 @@ def cmd_backtest(args: argparse.Namespace) -> int:
 
     if args.export_equity_csv:
         save_equity_curve_csv(result.equity_curve, out_dir / "equity_curve.csv")
+    if args.export_drawdown_csv:
+        save_drawdown_curve_csv(result.drawdown_curve, out_dir / "drawdown_curve.csv")
 
     sharpe = getattr(result.report, "sharpe_ratio", 0.0)
     print(
