@@ -17,6 +17,13 @@ from .rebalancing import (
     analyze_transaction_cost_sensitivity,
     build_rebalance_schedule,
 )
+from .capital_allocator import (
+    AllocationBreakdown,
+    AllocationSignal,
+    CapitalAllocationResult,
+    CapitalAllocatorConfig,
+    allocate_capital,
+)
 
 __all__ = [
     "MultiStrategyConfig",
@@ -32,4 +39,9 @@ __all__ = [
     "CostSensitivityResult",
     "build_rebalance_schedule",
     "analyze_transaction_cost_sensitivity",
+    "AllocationSignal",
+    "AllocationBreakdown",
+    "CapitalAllocatorConfig",
+    "CapitalAllocationResult",
+    "allocate_capital",
 ]

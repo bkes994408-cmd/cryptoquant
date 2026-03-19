@@ -89,3 +89,9 @@
 - [x] 多策略淨曝險（Net Exposure）計算模組
 - [x] 相關性風險控管（pair / average correlation guard）
 - [x] VaR / CVaR 歷史模擬計算模組
+
+## MVP-17：資金分配器（Capital Allocator）
+
+- [x] 獨立資金調度模組（脫離策略邏輯）
+- [x] 動態資金分配算法（信心分數 / 近期穩定度 / 回撤 / 波動率 / 交易成本）
+- [x] 權重上下限與現金保留（cash reserve）約束
