@@ -9,6 +9,16 @@ from .manager import (
     RiskResult,
     RiskStatus,
 )
+from .portfolio_engine import (
+    CorrelationRiskConfig,
+    CorrelationRiskResult,
+    ExposureSnapshot,
+    StrategyPosition,
+    VarCvarResult,
+    calculate_net_exposure,
+    evaluate_correlation_risk,
+    historical_var_cvar,
+)
 
 __all__ = [
     "RiskInput",
@@ -20,4 +30,12 @@ __all__ = [
     "RiskAlertLevel",
     "DynamicStopConfig",
     "KillSwitch",
+    "StrategyPosition",
+    "ExposureSnapshot",
+    "CorrelationRiskConfig",
+    "CorrelationRiskResult",
+    "VarCvarResult",
+    "calculate_net_exposure",
+    "evaluate_correlation_risk",
+    "historical_var_cvar",
 ]
