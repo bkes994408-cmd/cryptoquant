@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
+from math import isfinite
 from typing import Mapping
 
 
@@ -55,8 +56,17 @@ class StrategyRegistration:
     created_at: datetime
 
 
+@dataclass(frozen=True)
+class RegimeStrategyBinding:
+    regime: str
+    strategy_id: str
+    strategy_name: str
+    version: str
+    weight: float
+
+
 class StrategyRegistry:
-    """Central registry for strategy identity, lifecycle, dependencies, and versions."""
+    """Central registry for strategy identity, lifecycle, dependencies, versions, and regime-aware routing."""
 
     _LIFECYCLE_TRANSITIONS: dict[StrategyLifecycle, set[StrategyLifecycle]] = {
         StrategyLifecycle.DRAFT: {StrategyLifecycle.ACTIVE, StrategyLifecycle.ARCHIVED},
@@ -69,6 +79,7 @@ class StrategyRegistry:
     def __init__(self) -> None:
         self._strategies: dict[str, _StrategyState] = {}
         self._features: dict[str, FeatureSpec] = {}
+        self._regime_routes: dict[str, dict[str, _RegimeRouteState]] = {}
         self._id_sequence = 0
 
     def register_strategy(self, *, name: str, strategy_id: str | None = None) -> str:
@@ -204,6 +215,88 @@ class StrategyRegistry:
         if state.active_version == version:
             state.active_version = None
 
+    def configure_regime_route(
+        self,
+        regime: str,
+        *,
+        strategy_id: str,
+        weight: float = 1.0,
+        version: str | None = None,
+    ) -> None:
+        if not regime.strip():
+            raise ValueError("regime must not be empty")
+        if not isfinite(weight) or weight <= 0.0:
+            raise ValueError("weight must be finite and > 0")
+
+        state = self._get_strategy(strategy_id)
+        if version is not None and version not in state.versions:
+            raise ValueError(f"version not found: {strategy_id}@{version}")
+
+        routes = self._regime_routes.setdefault(regime, {})
+        routes[strategy_id] = _RegimeRouteState(weight=float(weight), version=version)
+
+    def clear_regime_route(self, regime: str, *, strategy_id: str | None = None) -> None:
+        if strategy_id is None:
+            self._regime_routes.pop(regime, None)
+            return
+
+        routes = self._regime_routes.get(regime)
+        if routes is None:
+            return
+        routes.pop(strategy_id, None)
+        if not routes:
+            self._regime_routes.pop(regime, None)
+
+    def resolve_regime_bindings(self, regime: str, *, only_active: bool = True) -> tuple[RegimeStrategyBinding, ...]:
+        configured = self._regime_routes.get(regime, {})
+        if not configured:
+            return ()
+
+        selected: list[RegimeStrategyBinding] = []
+        for strategy_id, route in sorted(configured.items()):
+            state = self._get_strategy(strategy_id)
+            if only_active and state.lifecycle != StrategyLifecycle.ACTIVE:
+                continue
+
+            version = route.version or state.active_version
+            if version is None:
+                continue
+
+            record = state.versions.get(version)
+            if record is None:
+                continue
+            if only_active and record.status != StrategyVersionStatus.ACTIVE:
+                continue
+
+            selected.append(
+                RegimeStrategyBinding(
+                    regime=regime,
+                    strategy_id=strategy_id,
+                    strategy_name=state.name,
+                    version=version,
+                    weight=route.weight,
+                )
+            )
+
+        if not selected:
+            return ()
+
+        total_weight = sum(item.weight for item in selected)
+        if total_weight <= 0.0:
+            return ()
+
+        normalized = tuple(
+            RegimeStrategyBinding(
+                regime=item.regime,
+                strategy_id=item.strategy_id,
+                strategy_name=item.strategy_name,
+                version=item.version,
+                weight=item.weight / total_weight,
+            )
+            for item in selected
+        )
+        return normalized
+
     def get(self, strategy_id: str) -> StrategyRegistration:
         state = self._get_strategy(strategy_id)
         versions = tuple(sorted(state.versions.values(), key=lambda x: _version_sort_key(x.version)))
@@ -241,6 +334,12 @@ class _StrategyState:
     dependencies: dict[str, FeatureDependency] = field(default_factory=dict)
     versions: dict[str, StrategyVersion] = field(default_factory=dict)
     active_version: str | None = None
+
+
+@dataclass
+class _RegimeRouteState:
+    weight: float
+    version: str | None = None
 
 
 def _version_sort_key(value: str) -> tuple[tuple[int, str], ...]:

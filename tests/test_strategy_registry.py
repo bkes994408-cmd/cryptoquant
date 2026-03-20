@@ -106,3 +106,40 @@ def test_strategy_registry_centralizes_version_status_and_switches_active_versio
     assert detail2.active_version is None
     latest = {item.version: item.status for item in detail2.versions}
     assert latest["1.1.0"] == StrategyVersionStatus.DEPRECATED
+
+
+def test_strategy_registry_resolves_regime_routes_with_normalized_weights() -> None:
+    registry = StrategyRegistry()
+
+    trend_id = registry.register_strategy(name="Trend")
+    mean_id = registry.register_strategy(name="MeanRevert")
+
+    registry.add_version(trend_id, version="1.0.0", activate=True)
+    registry.add_version(mean_id, version="1.0.0", activate=True)
+    registry.set_lifecycle(trend_id, StrategyLifecycle.ACTIVE)
+    registry.set_lifecycle(mean_id, StrategyLifecycle.ACTIVE)
+
+    registry.configure_regime_route("trend", strategy_id=trend_id, weight=3.0)
+    registry.configure_regime_route("trend", strategy_id=mean_id, weight=1.0)
+
+    bindings = registry.resolve_regime_bindings("trend")
+    by_id = {item.strategy_id: item for item in bindings}
+
+    assert len(bindings) == 2
+    assert abs(by_id[trend_id].weight - 0.75) < 1e-9
+    assert abs(by_id[mean_id].weight - 0.25) < 1e-9
+    assert by_id[trend_id].version == "1.0.0"
+
+
+def test_strategy_registry_regime_routes_skip_non_active_when_required() -> None:
+    registry = StrategyRegistry()
+    strategy_id = registry.register_strategy(name="EventDrive")
+    registry.add_version(strategy_id, version="2.0.0", activate=True)
+    registry.configure_regime_route("event", strategy_id=strategy_id, weight=1.0)
+
+    assert registry.resolve_regime_bindings("event") == ()
+
+    registry.set_lifecycle(strategy_id, StrategyLifecycle.ACTIVE)
+    bindings = registry.resolve_regime_bindings("event")
+    assert len(bindings) == 1
+    assert bindings[0].strategy_id == strategy_id
