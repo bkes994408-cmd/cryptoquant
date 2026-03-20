@@ -7,6 +7,15 @@ from .adaptive import (
 from .engine import StrategyDecision, StrategyEngine
 from .ma_crossover import MovingAverageCrossoverStrategy
 from .optimizer import AutomatedStrategyOptimizer, StrategyEvaluation, StrategyOptimizationResult, StrategyParameterSet
+from .registry import (
+    FeatureDependency,
+    FeatureSpec,
+    StrategyLifecycle,
+    StrategyRegistration,
+    StrategyRegistry,
+    StrategyVersion,
+    StrategyVersionStatus,
+)
 
 __all__ = [
     "StrategyDecision",
@@ -20,4 +29,11 @@ __all__ = [
     "AdaptiveStrategyConfig",
     "AdaptiveParameterController",
     "EpsilonGreedyParameterBandit",
+    "StrategyRegistry",
+    "StrategyLifecycle",
+    "StrategyRegistration",
+    "StrategyVersion",
+    "StrategyVersionStatus",
+    "FeatureSpec",
+    "FeatureDependency",
 ]
