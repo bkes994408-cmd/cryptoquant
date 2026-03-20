@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import timedelta
 from typing import Callable, Mapping, Sequence
 
 from cryptoquant.events.market import MarketEvent
@@ -13,6 +14,7 @@ class ExecutionModelConfig:
     fee_bps: float = 4.0
     slippage_bps: float = 2.0
     latency_bars: int = 0
+    latency_seconds: int = 0
     initial_equity: float = 10_000.0
 
 
@@ -51,6 +53,8 @@ def simulate_realistic_execution(
         raise ValueError("initial_equity must be > 0")
     if config.latency_bars < 0:
         raise ValueError("latency_bars must be >= 0")
+    if config.latency_seconds < 0:
+        raise ValueError("latency_seconds must be >= 0")
 
     ordered = sorted((event for event in events if event.symbol == symbol), key=lambda event: event.ts)
     if not ordered:
@@ -60,6 +64,19 @@ def simulate_realistic_execution(
     executor = PaperExecutor(oms, fee_bps=config.fee_bps, slippage_bps=config.slippage_bps)
 
     pending: list[tuple[int, int, float]] = []
+
+    def _resolve_execute_idx(signal_idx: int) -> int:
+        by_bars = min(signal_idx + config.latency_bars, len(ordered) - 1)
+        if config.latency_seconds == 0:
+            return by_bars
+
+        target_ts = ordered[signal_idx].ts + timedelta(seconds=config.latency_seconds)
+        by_time = len(ordered) - 1
+        for future_idx in range(signal_idx, len(ordered)):
+            if ordered[future_idx].ts >= target_ts:
+                by_time = future_idx
+                break
+        return max(by_bars, by_time)
     fills: list[Fill] = []
     expected_qty = 0.0
     cash = config.initial_equity
@@ -85,7 +102,7 @@ def simulate_realistic_execution(
         target_qty = target_qty_fn(event)
         delta_qty = target_qty - expected_qty
         if delta_qty != 0:
-            execute_idx = min(idx + config.latency_bars, len(ordered) - 1)
+            execute_idx = _resolve_execute_idx(idx)
             pending.append((execute_idx, sequence, delta_qty))
             expected_qty += delta_qty
             sequence += 1
@@ -130,10 +147,16 @@ def run_regime_scenarios(
 ) -> list[RegimeScenarioResult]:
     results: list[RegimeScenarioResult] = []
     for scenario in scenarios:
+        if scenario.fee_multiplier < 0 or scenario.slippage_multiplier < 0:
+            raise ValueError("scenario multiplier must be >= 0")
+        if scenario.latency_bars is not None and scenario.latency_bars < 0:
+            raise ValueError("scenario latency_bars must be >= 0")
+
         scenario_config = ExecutionModelConfig(
             fee_bps=base_config.fee_bps * scenario.fee_multiplier,
             slippage_bps=base_config.slippage_bps * scenario.slippage_multiplier,
             latency_bars=base_config.latency_bars if scenario.latency_bars is None else scenario.latency_bars,
+            latency_seconds=base_config.latency_seconds,
             initial_equity=base_config.initial_equity,
         )
         result = simulate_realistic_execution(
