@@ -1,5 +1,42 @@
 # Sprint Result
 
+## MVP-11：回測引擎真實化升級（2026-03-20）
+
+1. 新增真實撮合回測模型
+   - 新增 `src/cryptoquant/backtest/mvp11.py`
+   - 提供 `simulate_realistic_execution(...)`：
+     - 支援 `fee_bps` / `slippage_bps` / `latency_bars`
+     - 以訊號生成時點與延遲成交時點分離模擬市場單
+     - 產出 `fills / equity_curve / total_fee / total_slippage_cost`
+
+2. 新增多場景（Regime）回測
+   - `RegimeScenario` / `run_regime_scenarios(...)`
+   - 可基於 base config 套用場景倍率：
+     - `slippage_multiplier`
+     - `fee_multiplier`
+     - `latency_bars`（可覆寫）
+
+3. 新增多策略投資組合回測基礎
+   - `run_multi_strategy_portfolio_backtest(...)`
+   - 支援多策略 target qty 權重聚合（可自訂 weights，未提供時等權）
+
+4. API 導出與測試補齊
+   - 更新 `src/cryptoquant/backtest/__init__.py` 導出 MVP-11 API
+   - 新增 `tests/test_backtest_mvp11.py`
+   - 覆蓋：
+     - 滑價/延遲/手續費生效
+     - Regime 成本倍率生效
+     - 多策略權重聚合最終持倉
+
+驗證結果（2026-03-20）：
+
+- `.venv/bin/python -m pytest -q tests/test_backtest_mvp11.py` ✅（3 passed）
+- `.venv/bin/python -m pytest -q tests/test_backtest_mvp11.py`
+  `tests/test_market_regime_detector.py`
+  `tests/test_multi_strategy_portfolio_manager.py` ✅（11 passed）
+
+---
+
 ## MVP-9：智能決策與多策略組合 / 多策略投資組合管理（2026-03-14）
 
 1. 新增多策略投資組合管理模組

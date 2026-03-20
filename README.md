@@ -25,6 +25,54 @@ MVP-driven quantitative trading scaffold
 - 模式切換告警：`risk.degradation.mode_changed`。
 - 內建 edge-trigger 去重，避免同一異常連續刷屏。
 
+## MVP-11：回測引擎真實化升級（已完成）
+
+本次回測能力已提供：
+
+1. **真實撮合模型（滑價 / 延遲 / 手續費）**：
+
+- `simulate_realistic_execution(...)`
+- 參數：`fee_bps`、`slippage_bps`、`latency_bars`、`initial_equity`
+- 輸出：`fills`、`equity_curve`、`total_fee`、`total_slippage_cost`
+
+1. **多場景（Regime）回測**：
+
+- `run_regime_scenarios(...)`
+- 透過 `RegimeScenario` 針對不同市場環境（normal/stress）調整成本與延遲
+
+1. **多策略投資組合回測基礎**：
+
+- `run_multi_strategy_portfolio_backtest(...)`
+- 將多策略 target qty 以權重聚合後進行同一撮合流程回測
+
+```python
+from cryptoquant.backtest import (
+    ExecutionModelConfig,
+    RegimeScenario,
+    run_regime_scenarios,
+)
+
+results = run_regime_scenarios(
+    events,
+    symbol="BTCUSDT",
+    target_qty_fn=lambda e: 1.0 if e.close >= 102 else 0.0,
+    scenarios=[
+        RegimeScenario(name="normal"),
+        RegimeScenario(
+            name="stress",
+            slippage_multiplier=4.0,
+            fee_multiplier=2.0,
+            latency_bars=1,
+        ),
+    ],
+    base_config=ExecutionModelConfig(
+        initial_equity=10_000.0,
+        fee_bps=5.0,
+        slippage_bps=5.0,
+    ),
+)
+```
+
 ## MVP-8：交易所 API 集成與高級風控（既有能力）
 
 既有交付包含：
