@@ -3,9 +3,31 @@
 MVP-driven quantitative trading scaffold
 （事件驅動 + 可測試 execution/risk/strategy 模組）。
 
-## MVP-8：交易所 API 集成與高級風控（目前完成範圍）
+## MVP-18：自動降級與分層異常保護（目前完成範圍）
 
 本次交付目前已完成：
+
+1. **Kill switch 分層化（策略/帳戶/全域）**：
+
+- `KillSwitchScope` 支援 `GLOBAL / ACCOUNT / STRATEGY`。
+- `assert_allows_execution(account_id=..., strategy_id=...)` 可做精準攔截。
+- 保留舊介面相容性（`engage(reason)` / `release()` 仍是全域）。
+
+1. **自動降級機制（latency / reject rate / slippage）**：
+
+- `AutoDegradationController` 依滑動視窗計算平均 latency、reject rate、平均 slippage。
+- 觸發 warn -> `DEGRADED`，觸發 critical -> `HALTED`。
+- critical 時可自動觸發 kill switch；健康樣本回復後自動回到 `NORMAL`。
+
+1. **實時異常風控預警**：
+
+- 異常指標告警：`risk.anomaly.<metric>.<warn|critical>`。
+- 模式切換告警：`risk.degradation.mode_changed`。
+- 內建 edge-trigger 去重，避免同一異常連續刷屏。
+
+## MVP-8：交易所 API 集成與高級風控（既有能力）
+
+既有交付包含：
 
 1. **Binance Futures + 多帳戶 live execution** 最小可用能力：
 

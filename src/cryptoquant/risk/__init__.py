@@ -1,4 +1,11 @@
-from .kill_switch import KillSwitch
+from .degradation import (
+    AutoDegradationController,
+    DegradationSnapshot,
+    DegradationThresholds,
+    ExecutionHealthSample,
+    ProtectionMode,
+)
+from .kill_switch import KillSwitch, KillSwitchBlock, KillSwitchScope
 from .manager import (
     DynamicStopConfig,
     RiskAlert,
@@ -30,6 +37,13 @@ __all__ = [
     "RiskAlertLevel",
     "DynamicStopConfig",
     "KillSwitch",
+    "KillSwitchScope",
+    "KillSwitchBlock",
+    "ProtectionMode",
+    "DegradationThresholds",
+    "ExecutionHealthSample",
+    "DegradationSnapshot",
+    "AutoDegradationController",
     "StrategyPosition",
     "ExposureSnapshot",
     "CorrelationRiskConfig",
