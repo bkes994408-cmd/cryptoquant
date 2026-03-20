@@ -215,7 +215,7 @@ class OperationalDashboard:
         return result
 
     def _trim_if_needed(self) -> None:
-        def trim[T](items: list[T]) -> list[T]:
+        def trim(items: list):
             if len(items) <= self._max_samples:
                 return items
             return items[-self._max_samples :]

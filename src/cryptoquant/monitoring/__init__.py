@@ -18,4 +18,11 @@ __all__ = [
     "PositionPerformance",
     "PerformanceSnapshot",
     "RealTimePerformanceMonitor",
+    "RiskEvent",
+    "StrategyHealthSample",
+    "PnLView",
+    "StrategyHealthView",
+    "PerformanceSummary",
+    "OperationalDashboardView",
+    "OperationalDashboard",
 ]
