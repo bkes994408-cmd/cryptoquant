@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta
 
+import pytest
+
 from cryptoquant.backtest import (
     ExecutionModelConfig,
     RegimeScenario,
@@ -38,7 +40,13 @@ def test_simulate_realistic_execution_supports_latency_slippage_fee() -> None:
 
 
 def test_run_regime_scenarios_applies_cost_multipliers() -> None:
-    base = ExecutionModelConfig(initial_equity=10_000.0, fee_bps=5.0, slippage_bps=5.0, latency_bars=0)
+    base = ExecutionModelConfig(
+        initial_equity=10_000.0,
+        fee_bps=5.0,
+        slippage_bps=5.0,
+        latency_bars=0,
+        latency_seconds=30,
+    )
     scenarios = [
         RegimeScenario(name="normal", slippage_multiplier=1.0, fee_multiplier=1.0),
         RegimeScenario(name="stress", slippage_multiplier=4.0, fee_multiplier=2.0, latency_bars=1),
@@ -76,3 +84,33 @@ def test_multi_strategy_portfolio_backtest_uses_weighted_targets() -> None:
     # 在 close=104 起，組合目標 = 0.75*1 + 0.25*(-0.5) = 0.625
     final_position = sum(fill.qty for fill in result.fills)
     assert round(final_position, 6) == 0.625
+
+
+def test_simulate_realistic_execution_supports_time_based_latency() -> None:
+    result = simulate_realistic_execution(
+        _events(),
+        symbol="BTCUSDT",
+        target_qty_fn=lambda event: 1.0 if event.close >= 102.0 else 0.0,
+        config=ExecutionModelConfig(
+            initial_equity=10_000.0,
+            fee_bps=0.0,
+            slippage_bps=0.0,
+            latency_bars=0,
+            latency_seconds=120,
+        ),
+    )
+
+    assert len(result.fills) == 1
+    fill = result.fills[0]
+    # 訊號在 close=102 生成，延遲 120s 後於 close=103 的 bar 成交
+    assert round(fill.requested_price, 6) == 103.0
+
+
+def test_run_regime_scenarios_rejects_invalid_scenario_multipliers() -> None:
+    with pytest.raises(ValueError, match="scenario multiplier"):
+        run_regime_scenarios(
+            _events(),
+            symbol="BTCUSDT",
+            target_qty_fn=lambda event: 0.0,
+            scenarios=[RegimeScenario(name="bad", slippage_multiplier=-1.0)],
+        )
