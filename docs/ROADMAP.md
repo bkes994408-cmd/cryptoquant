@@ -84,6 +84,12 @@
 - [x] 資料品質檢查模組（Checklist，OHLCV 基礎規則）
 - [x] 初步資料版本控管（Versioning，checksum + manifest）
 
+## MVP-11：回測引擎真實化升級
+
+- [x] 真實撮合模型（滑價 / 延遲 / 手續費）
+- [x] 多場景（Regime）回測（成本與延遲可按場景調整）
+- [x] 多策略投資組合回測基礎（權重聚合 target qty）
+
 ## MVP-16：投組級風控引擎
 
 - [x] 多策略淨曝險（Net Exposure）計算模組
