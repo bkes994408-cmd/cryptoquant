@@ -258,11 +258,11 @@ def _version_lt(left: str, right: str) -> bool:
     rparts = right.split(".")
     max_len = max(len(lparts), len(rparts))
     for idx in range(max_len):
-        l = lparts[idx] if idx < len(lparts) else "0"
-        r = rparts[idx] if idx < len(rparts) else "0"
-        if l == r:
+        left_part = lparts[idx] if idx < len(lparts) else "0"
+        right_part = rparts[idx] if idx < len(rparts) else "0"
+        if left_part == right_part:
             continue
-        if l.isdigit() and r.isdigit():
-            return int(l) < int(r)
-        return l < r
+        if left_part.isdigit() and right_part.isdigit():
+            return int(left_part) < int(right_part)
+        return left_part < right_part
     return False
