@@ -134,7 +134,7 @@ def run_multi_asset_multi_strategy_backtest(
     if not strategy_target_qty_fns:
         raise ValueError("at least one symbol with strategy is required")
 
-    rng = Random(config.random_seed)
+    rng = Random(config.random_seed)  # nosec B311 - deterministic backtest simulation RNG, not for crypto/security use
     ordered = sorted(events, key=lambda event: event.ts)
     symbols = sorted(strategy_target_qty_fns.keys())
     if any(symbol not in {event.symbol for event in ordered} for symbol in symbols):
