@@ -1,5 +1,30 @@
 # Sprint Result
 
+## v1.1 Sprint-2：Paper flip reduce-only safety hardening（2026-03-22）
+
+1. Paper Executor 增加 reduce-only 驗證
+   - 更新 `src/cryptoquant/execution/paper.py`
+   - `execute_market(..., reduce_only=True)` 現在會檢查：
+     - 必須有既有持倉且方向相反（否則拒絕）
+     - reduce-only 數量不可超過目前持倉
+
+2. Flip 拆單流程相容性修正
+   - `execute_to_target(...)` 在 flip close leg 會依「是否有 executor 內部已追蹤持倉」決定是否啟用 reduce-only guard
+   - 避免在「外部提供 current_qty、但 executor 尚未追蹤持倉」情境下誤拒單
+
+3. 測試補齊
+   - 更新 `tests/test_paper_executor.py`
+   - 新增覆蓋：
+     - 無持倉時 reduce-only 會拒絕
+     - reduce-only 超過持倉大小會拒絕
+
+驗證結果（2026-03-22）：
+
+- `.venv/bin/python -m ruff check src/cryptoquant/execution/paper.py tests/test_paper_executor.py` ✅
+- `.venv/bin/python -m pytest -q tests/test_paper_executor.py tests/test_execution_flip_flow.py` ✅（10 passed）
+
+---
+
 ## v1.1 Sprint-1：listenKey supervisor renew + rebuild + WS reconnect（2026-03-22）
 
 1. listenKey keepalive 自動重建

@@ -48,6 +48,7 @@ class PaperExecutor:
         qty: float,
         mark_price: float,
         ts: datetime,
+        reduce_only: bool = False,
     ) -> Fill:
         if qty == 0:
             raise ValueError("qty must be non-zero")
@@ -59,6 +60,13 @@ class PaperExecutor:
         existing = self._fills.get(client_order_id)
         if existing is not None:
             return existing
+
+        if reduce_only:
+            current_qty = self._position_qty.get(symbol, 0.0)
+            if current_qty == 0 or current_qty * qty >= 0:
+                raise ValueError("reduce-only order must reduce an existing position")
+            if abs(qty) > abs(current_qty):
+                raise ValueError("reduce-only order cannot exceed current position size")
 
         order = self._oms.submit(client_order_id=client_order_id, symbol=symbol, qty=qty)
         if order.status == OrderStatus.FILLED:
@@ -123,12 +131,14 @@ class PaperExecutor:
         # Flip direction: close first, then open.
         close_qty = -current_qty
         open_qty = target_qty
+        tracked_qty = self._position_qty.get(symbol)
         close_fill = self.execute_market(
             client_order_id=f"{client_order_id_prefix}-close",
             symbol=symbol,
             qty=close_qty,
             mark_price=mark_price,
             ts=ts,
+            reduce_only=(tracked_qty is not None and tracked_qty != 0),
         )
         open_fill = self.execute_market(
             client_order_id=f"{client_order_id_prefix}-open",
