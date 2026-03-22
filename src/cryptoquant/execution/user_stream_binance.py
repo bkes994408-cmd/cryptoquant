@@ -42,9 +42,14 @@ class BinanceUserStreamClient:
         self._reconnect_max_sec = reconnect_max_sec
         self._sleep_fn = sleep_fn
         self._stopped = False
+        self._reconnect_requested = False
 
     def stop(self) -> None:
         self._stopped = True
+
+    def reconnect(self) -> None:
+        """Request WS reconnect without stopping the service."""
+        self._reconnect_requested = True
 
     def run_forever(self) -> None:
         backoff = self._reconnect_initial_sec
@@ -54,7 +59,10 @@ class BinanceUserStreamClient:
                 listen_key = self._listen_key_provider.get_listen_key()
                 ws = self._ws_factory(f"{self._base_url}{listen_key}")
                 backoff = self._reconnect_initial_sec
+                self._reconnect_requested = False
                 while not self._stopped:
+                    if self._reconnect_requested:
+                        raise RuntimeError("reconnect requested")
                     report = parse_binance_execution_report(ws.recv())
                     if report is not None:
                         self._on_execution_report(report)
@@ -63,6 +71,9 @@ class BinanceUserStreamClient:
             except Exception:
                 if self._stopped:
                     break
+                if self._reconnect_requested:
+                    self._reconnect_requested = False
+                    continue
                 self._listen_key_provider.clear_cached_listen_key()
                 self._sleep_fn(backoff)
                 backoff = min(backoff * 2, self._reconnect_max_sec)

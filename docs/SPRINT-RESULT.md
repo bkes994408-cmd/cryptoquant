@@ -1,5 +1,35 @@
 # Sprint Result
 
+## v1.1 Sprint-1：listenKey supervisor renew + rebuild + WS reconnect（2026-03-22）
+
+1. listenKey keepalive 自動重建
+   - 更新 `src/cryptoquant/execution/user_stream_runtime.py`
+   - `KeepaliveRunner` 新增連續失敗追蹤與重建機制：
+     - `max_consecutive_failures_before_rebuild`
+     - 連續失敗達門檻時自動 `clear_cached_listen_key()` + `get_listen_key()`
+     - 新增 `on_rebuild(new_listen_key, stats)` callback
+
+2. User Stream WS 最小停機重連
+   - 更新 `src/cryptoquant/execution/user_stream_binance.py`
+   - 新增 `BinanceUserStreamClient.reconnect()`
+   - 接到 reconnect request 時立即切斷當前循環並重建 socket，不走 backoff sleep
+
+3. service wiring（預設自動串接）
+   - `BinanceUserStreamService` 在未提供 `on_rebuild` 時，預設將 listenKey rebuild 事件接到 `client.reconnect()`
+
+4. 測試補齊
+   - 更新 `tests/test_user_stream_runtime.py`
+     - 覆蓋 keepalive 連續失敗後 listenKey rebuild
+     - 覆蓋 service 在 rebuild 時觸發 client reconnect
+   - 更新 `tests/test_binance_user_stream.py`
+     - 覆蓋 `reconnect()` 觸發後立即重連 socket、且不進入 backoff
+
+驗證結果（2026-03-22）：
+
+- `.venv/bin/python -m pytest -q tests/test_user_stream_runtime.py tests/test_binance_user_stream.py` ✅
+
+---
+
 ## MVP-11：回測引擎真實化升級（2026-03-20）
 
 1. 新增真實撮合回測模型
