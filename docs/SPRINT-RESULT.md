@@ -1,5 +1,68 @@
 # Sprint Result
 
+## v1.1 Sprint-2：Paper flip reduce-only safety hardening（2026-03-22）
+
+1. Paper Executor 增加 reduce-only 驗證
+   - 更新 `src/cryptoquant/execution/paper.py`
+   - `execute_market(..., reduce_only=True)` 現在會檢查：
+     - 必須有既有持倉且方向相反（否則拒絕）
+     - 必須有既有持倉且方向相反（否則拒絕）
+     - reduce-only 數量不可超過目前持倉
+
+2. Flip 拆單流程相容性修正
+   - `execute_to_target(...)` 在 flip close leg 會依「是否有 executor
+     內部已追蹤持倉」決定是否啟用 reduce-only guard
+   - 避免在「外部提供 current_qty、但 executor 尚未追蹤持倉」
+     情境下誤拒單
+
+3. 測試補齊
+   - 更新 `tests/test_paper_executor.py`
+   - 新增覆蓋：
+     - 無持倉時 reduce-only 會拒絕
+     - reduce-only 超過持倉大小會拒絕
+
+驗證結果（2026-03-22）：
+
+- `.venv/bin/python -m ruff check src/cryptoquant/execution/paper.py`
+  `tests/test_paper_executor.py` ✅
+- `.venv/bin/python -m pytest -q tests/test_paper_executor.py`
+  `tests/test_execution_flip_flow.py` ✅（10 passed）
+
+---
+
+## v1.1 Sprint-1：listenKey supervisor renew + rebuild + WS reconnect（2026-03-22）
+
+1. listenKey keepalive 自動重建
+   - 更新 `src/cryptoquant/execution/user_stream_runtime.py`
+   - `KeepaliveRunner` 新增連續失敗追蹤與重建機制：
+     - `max_consecutive_failures_before_rebuild`
+     - 連續失敗達門檻時自動
+       `clear_cached_listen_key()` + `get_listen_key()`
+     - 新增 `on_rebuild(new_listen_key, stats)` callback
+
+2. User Stream WS 最小停機重連
+   - 更新 `src/cryptoquant/execution/user_stream_binance.py`
+   - 新增 `BinanceUserStreamClient.reconnect()`
+   - 接到 reconnect request 時立即切斷當前循環並重建 socket，不走 backoff sleep
+
+3. service wiring（預設自動串接）
+   - `BinanceUserStreamService` 在未提供 `on_rebuild` 時，預設將
+     listenKey rebuild 事件接到 `client.reconnect()`
+
+4. 測試補齊
+   - 更新 `tests/test_user_stream_runtime.py`
+     - 覆蓋 keepalive 連續失敗後 listenKey rebuild
+     - 覆蓋 service 在 rebuild 時觸發 client reconnect
+   - 更新 `tests/test_binance_user_stream.py`
+     - 覆蓋 `reconnect()` 觸發後立即重連 socket、且不進入 backoff
+
+驗證結果（2026-03-22）：
+
+- `.venv/bin/python -m pytest -q tests/test_user_stream_runtime.py`
+  `tests/test_binance_user_stream.py` ✅
+
+---
+
 ## MVP-11：回測引擎真實化升級（2026-03-20）
 
 1. 新增真實撮合回測模型

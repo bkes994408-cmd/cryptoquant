@@ -98,6 +98,44 @@ def test_execute_to_target_no_flip_uses_single_leg() -> None:
     assert executor.position_qty("BTCUSDT") == 2.0
 
 
+def test_execute_market_reduce_only_rejects_if_no_position() -> None:
+    oms = OMS()
+    executor = PaperExecutor(oms, fee_bps=0.0, slippage_bps=0.0)
+
+    with pytest.raises(ValueError, match="reduce-only order must reduce an existing position"):
+        executor.execute_market(
+            client_order_id="ro-1",
+            symbol="BTCUSDT",
+            qty=-1.0,
+            mark_price=100.0,
+            ts=datetime(2026, 2, 28, 0, 0, tzinfo=timezone.utc),
+            reduce_only=True,
+        )
+
+
+def test_execute_market_reduce_only_cannot_exceed_position_size() -> None:
+    oms = OMS()
+    executor = PaperExecutor(oms, fee_bps=0.0, slippage_bps=0.0)
+
+    executor.execute_market(
+        client_order_id="seed-long",
+        symbol="BTCUSDT",
+        qty=1.0,
+        mark_price=100.0,
+        ts=datetime(2026, 2, 28, 0, 0, tzinfo=timezone.utc),
+    )
+
+    with pytest.raises(ValueError, match="reduce-only order cannot exceed current position size"):
+        executor.execute_market(
+            client_order_id="ro-2",
+            symbol="BTCUSDT",
+            qty=-2.0,
+            mark_price=100.0,
+            ts=datetime(2026, 2, 28, 0, 1, tzinfo=timezone.utc),
+            reduce_only=True,
+        )
+
+
 def test_paper_executor_blocks_execution_when_kill_switch_active() -> None:
     oms = OMS()
     kill_switch = KillSwitch()

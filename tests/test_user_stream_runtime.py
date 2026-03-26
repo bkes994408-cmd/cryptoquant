@@ -8,10 +8,19 @@ from cryptoquant.execution import BinanceUserStreamService, KeepaliveRunner
 class FakeProvider:
     def __init__(self) -> None:
         self.calls = 0
+        self.clear_calls = 0
+        self.get_calls = 0
 
     def keepalive(self) -> str:
         self.calls += 1
         return "lk"
+
+    def clear_cached_listen_key(self) -> None:
+        self.clear_calls += 1
+
+    def get_listen_key(self) -> str:
+        self.get_calls += 1
+        return f"lk-{self.get_calls}"
 
 
 class FlakyProvider:
@@ -30,12 +39,16 @@ class FakeClient:
     def __init__(self) -> None:
         self.calls = 0
         self.stop_calls = 0
+        self.reconnect_calls = 0
 
     def run_forever(self) -> None:
         self.calls += 1
 
     def stop(self) -> None:
         self.stop_calls += 1
+
+    def reconnect(self) -> None:
+        self.reconnect_calls += 1
 
 
 class FakeProcessor:
@@ -150,6 +163,41 @@ def test_keepalive_runner_invokes_failure_callback() -> None:
     assert callback_stats[0].last_error == "boom"
 
 
+def test_keepalive_runner_rebuilds_listen_key_after_consecutive_failures() -> None:
+    callback_payloads = []
+
+    def on_rebuild(new_key: str, stats) -> None:  # noqa: ANN001
+        callback_payloads.append((new_key, stats))
+
+    stop = threading.Event()
+
+    def fake_sleep(_: float) -> None:
+        stop.set()
+
+    class AlwaysFailProvider(FakeProvider):
+        def keepalive(self) -> str:
+            self.calls += 1
+            raise RuntimeError("keepalive failed")
+
+    provider = AlwaysFailProvider()
+    runner = KeepaliveRunner(
+        provider=provider,
+        interval_sec=10.0,
+        failure_backoff_initial_sec=0.1,
+        max_consecutive_failures_before_rebuild=1,
+        sleep_fn=fake_sleep,
+        on_rebuild=on_rebuild,
+    )
+
+    runner.run_forever(stop)
+
+    assert provider.clear_calls == 1
+    assert provider.get_calls == 1
+    assert len(callback_payloads) == 1
+    assert callback_payloads[0][0] == "lk-1"
+    assert callback_payloads[0][1].failure_count == 1
+
+
 def test_user_stream_service_starts_keepalive_and_runs_client_once() -> None:
     p = FakeProvider()
     keepalive = KeepaliveRunner(provider=p, interval_sec=999999)
@@ -200,3 +248,19 @@ def test_user_stream_service_stop_calls_client_stop() -> None:
 
     svc.stop()
     assert client.stop_calls == 1
+
+
+def test_user_stream_service_reconnects_client_on_listen_key_rebuild() -> None:
+    p = FakeProvider()
+    keepalive = KeepaliveRunner(provider=p, interval_sec=999999)
+    client = FakeClient()
+    processor = FakeProcessor()
+
+    BinanceUserStreamService(
+        client=client,
+        processor=processor,
+        keepalive_runner=keepalive,
+    )
+
+    keepalive.on_rebuild("lk-new", keepalive.stats())
+    assert client.reconnect_calls == 1
