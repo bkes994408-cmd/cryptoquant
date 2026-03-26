@@ -6,11 +6,14 @@
    - 更新 `src/cryptoquant/execution/paper.py`
    - `execute_market(..., reduce_only=True)` 現在會檢查：
      - 必須有既有持倉且方向相反（否則拒絕）
+     - 必須有既有持倉且方向相反（否則拒絕）
      - reduce-only 數量不可超過目前持倉
 
 2. Flip 拆單流程相容性修正
-   - `execute_to_target(...)` 在 flip close leg 會依「是否有 executor 內部已追蹤持倉」決定是否啟用 reduce-only guard
-   - 避免在「外部提供 current_qty、但 executor 尚未追蹤持倉」情境下誤拒單
+   - `execute_to_target(...)` 在 flip close leg 會依「是否有 executor
+     內部已追蹤持倉」決定是否啟用 reduce-only guard
+   - 避免在「外部提供 current_qty、但 executor 尚未追蹤持倉」
+     情境下誤拒單
 
 3. 測試補齊
    - 更新 `tests/test_paper_executor.py`
@@ -40,7 +43,8 @@
    - 接到 reconnect request 時立即切斷當前循環並重建 socket，不走 backoff sleep
 
 3. service wiring（預設自動串接）
-   - `BinanceUserStreamService` 在未提供 `on_rebuild` 時，預設將 listenKey rebuild 事件接到 `client.reconnect()`
+   - `BinanceUserStreamService` 在未提供 `on_rebuild` 時，預設將 listenKey
+     rebuild 事件接到 `client.reconnect()`
 
 4. 測試補齊
    - 更新 `tests/test_user_stream_runtime.py`
