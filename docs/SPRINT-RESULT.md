@@ -23,8 +23,10 @@
 
 驗證結果（2026-03-22）：
 
-- `.venv/bin/python -m ruff check src/cryptoquant/execution/paper.py tests/test_paper_executor.py` ✅
-- `.venv/bin/python -m pytest -q tests/test_paper_executor.py tests/test_execution_flip_flow.py` ✅（10 passed）
+- `.venv/bin/python -m ruff check src/cryptoquant/execution/paper.py`
+  `tests/test_paper_executor.py` ✅
+- `.venv/bin/python -m pytest -q tests/test_paper_executor.py`
+  `tests/test_execution_flip_flow.py` ✅（10 passed）
 
 ---
 
@@ -34,7 +36,8 @@
    - 更新 `src/cryptoquant/execution/user_stream_runtime.py`
    - `KeepaliveRunner` 新增連續失敗追蹤與重建機制：
      - `max_consecutive_failures_before_rebuild`
-     - 連續失敗達門檻時自動 `clear_cached_listen_key()` + `get_listen_key()`
+     - 連續失敗達門檻時自動
+       `clear_cached_listen_key()` + `get_listen_key()`
      - 新增 `on_rebuild(new_listen_key, stats)` callback
 
 2. User Stream WS 最小停機重連
@@ -43,8 +46,8 @@
    - 接到 reconnect request 時立即切斷當前循環並重建 socket，不走 backoff sleep
 
 3. service wiring（預設自動串接）
-   - `BinanceUserStreamService` 在未提供 `on_rebuild` 時，預設將 listenKey
-     rebuild 事件接到 `client.reconnect()`
+   - `BinanceUserStreamService` 在未提供 `on_rebuild` 時，預設將
+     listenKey rebuild 事件接到 `client.reconnect()`
 
 4. 測試補齊
    - 更新 `tests/test_user_stream_runtime.py`
@@ -55,7 +58,8 @@
 
 驗證結果（2026-03-22）：
 
-- `.venv/bin/python -m pytest -q tests/test_user_stream_runtime.py tests/test_binance_user_stream.py` ✅
+- `.venv/bin/python -m pytest -q tests/test_user_stream_runtime.py`
+  `tests/test_binance_user_stream.py` ✅
 
 ---
 
